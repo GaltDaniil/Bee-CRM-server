@@ -15,11 +15,16 @@ import { MessagesModule } from './messages/messages.module';
 import { Message } from './messages/messages.model';
 import { AuthModule } from './auth/auth.module';
 import { MessengersModule } from './messengers/messengers.module';
-import { TelegramModule } from './messengers/telegram/telegram.module';
 import { FilesModule } from './files/files.module';
 
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { EventModule } from './event/event.module';
+import { IntegrationModule } from './integration/integration.module';
+import { BoardsModule } from './boards/boards.module';
+import { CardsModule } from './cards/cards.module';
+import { ListsModule } from './lists/lists.module';
+import { CommentsModule } from './comments/comments.module';
 
 @Module({
     imports: [
@@ -46,6 +51,12 @@ import { join } from 'path';
         AuthModule,
         MessengersModule,
         FilesModule,
+        EventModule,
+        IntegrationModule,
+        BoardsModule,
+        CardsModule,
+        ListsModule,
+        CommentsModule,
     ],
     controllers: [],
     providers: [],

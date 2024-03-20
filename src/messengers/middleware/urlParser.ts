@@ -6,8 +6,8 @@ interface IParams {
 
 export const urlParser = (str: string): IParams => {
     try {
+        console.log('начался парсинг параметров');
         let contactId, accountId, fromUrl;
-
         const parsedParams: IParams = {};
 
         if (str.match(/contactId/)) {
@@ -20,8 +20,14 @@ export const urlParser = (str: string): IParams => {
         }
         if (str.match(/fromUrl/)) {
             fromUrl = str.match(/fromUrl=([^_]+)/);
-            if (fromUrl) parsedParams.from_url = fromUrl[1];
+            if (fromUrl)
+                parsedParams.from_url = fromUrl[1]
+                    .replace(/102/g, '.')
+                    .replace(/101/g, '-')
+                    .replace(/100/g, '/')
+                    .replace(/^https?:\/\//, '');
         }
+        console.log('parsedParams', parsedParams);
         return parsedParams;
     } catch (error) {
         console.log(error);

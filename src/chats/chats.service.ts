@@ -6,17 +6,18 @@ import { UpdateChatDto } from './dto/update-chat.dto';
 
 import { customAlphabet } from 'nanoid';
 import { Contact } from 'src/contacts/contacts.model';
-import sequelize from 'sequelize';
+import { Sequelize } from 'sequelize';
 import { Message } from 'src/messages/messages.model';
-import { User } from 'src/users/users.model';
+import { UsersService } from 'src/users/users.service';
+import { tgBot } from 'src/messengers/bots.init';
 
 const nanoid = customAlphabet('abcdef123456789', 24);
 
 @Injectable()
 export class ChatsService {
     constructor(
+        private userService: UsersService,
         @InjectModel(Chat) private chatRepository: typeof Chat,
-        @InjectModel(User) private userRepository: typeof User,
         @InjectModel(Contact)
         private contactsRepository: typeof Contact,
         @InjectModel(Message)
@@ -35,8 +36,14 @@ export class ChatsService {
     async getUserById(id: string) {
         try {
             const { user_id, user_name, user_email, user_status, user_photo_url, user_about } =
-                await this.userRepository.findOne({ where: { user_id: id } });
+                await this.userService.getUserById(id);
             return { user_id, user_name, user_email, user_status, user_photo_url, user_about };
+        } catch (error) {}
+    }
+    async getChatByContactId(id: string) {
+        try {
+            const chat = await this.chatRepository.findOne({ where: { contact_id: id } });
+            return chat;
         } catch (error) {}
     }
 
@@ -55,6 +62,10 @@ export class ChatsService {
                         limit: 1, // Получаем только одно последнее сообщение
                         order: [['createdAt', 'DESC']], // Сортируем по убыванию даты
                     },
+                    {
+                        model: this.contactsRepository, // Предположим, что у вас есть модель Contact
+                        attributes: ['contact_name', 'contact_status', 'contact_photo_url'],
+                    },
                 ],
             });
             return chats.map((chat) => {
@@ -62,9 +73,19 @@ export class ChatsService {
                     chat_id: chat.chat_id,
                     contact_id: chat.contact_id,
                     unread_count: chat.unread_count,
+                    messenger_id: chat.messenger_id,
+                    messenger_username: chat.messenger_username,
+                    messenger_type: chat.messenger_type,
+                    instagram_chat_id: chat.instagram_chat_id,
+                    from_url: chat.from_url,
                     chat_muted: chat.chat_muted,
                     lastMessage: chat.messages.length > 0 ? chat.messages[0].message_value : null,
                     lastMessageAt: chat.messages.length > 0 ? chat.messages[0].createdAt : null,
+                    chat_contact: {
+                        contact_name: chat.contact ? chat.contact.contact_name : null,
+                        contact_status: chat.contact ? chat.contact.contact_status : null,
+                        contact_photo_url: chat.contact ? chat.contact.contact_photo_url : null,
+                    },
                 };
             });
         } catch (error) {
@@ -76,6 +97,15 @@ export class ChatsService {
         try {
             const chat = await this.chatRepository.findOne({ where: { chat_id: id } });
             return chat;
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
+    async getContactById(id: string) {
+        try {
+            const contact = await this.contactsRepository.findOne({ where: { contact_id: id } });
+            return contact;
         } catch (error) {
             console.log(error);
         }
@@ -93,8 +123,8 @@ export class ChatsService {
         try {
             //@ts-ignore
             dto.chat_id = nanoid();
-
             const chat = await this.chatRepository.create(dto);
+            tgBot.sendMessage(680306494, 'Пришло новое сообщение в чат');
             return chat;
         } catch (error) {
             console.log(error);
@@ -129,7 +159,22 @@ export class ChatsService {
         }
     }
 
-    async getContactsWithChats() {
+    async readAllMessages(chat_id: string) {
+        try {
+            const chat = await this.chatRepository.update(
+                { unread_count: 0 },
+                {
+                    returning: true,
+                    where: { chat_id: chat_id },
+                },
+            );
+            return chat;
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
+    /* async getContactsWithChats() {
         const contactWithChats = await this.contactsRepository.findAll({
             include: [
                 {
@@ -159,5 +204,13 @@ export class ChatsService {
                 links: [],
             },
         }));
+    } */
+    async addUnreadCount(chat_id: string) {
+        this.chatRepository.update(
+            { unread_count: Sequelize.literal('"unread_count" + 1') },
+            {
+                where: { chat_id },
+            },
+        );
     }
 }

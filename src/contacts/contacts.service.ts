@@ -27,6 +27,11 @@ export class ContactsService {
         const contacts = await this.contactRepository.findAll();
         return contacts;
     }
+    async getOneContact(id: string) {
+        const contacts = await this.contactRepository.findOne({ where: { contact_id: id } });
+        return contacts;
+    }
+
     async getAllContactsDemo() {
         const contacts = await this.contactRepository.findAll();
         return contacts;

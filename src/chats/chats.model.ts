@@ -52,6 +52,8 @@ export class Chat extends Model<Chat, ChatCreationAttrs> {
     @ForeignKey(() => Message)
     @Column({ type: DataType.STRING, allowNull: true })
     chat_last_message: string; */
+    @BelongsTo(() => Contact)
+    contact: Contact;
 
     @HasMany(() => Message, { onDelete: 'cascade' })
     messages: Message[];

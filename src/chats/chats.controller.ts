@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put } from '@nestjs/common';
 import { ChatsService } from './chats.service';
 import { CreateChatDto } from './dto/create-chat.dto';
 
@@ -10,9 +10,17 @@ export class ChatsController {
     getAllChats() {
         return this.chatsService.getAllChats();
     }
+    @Get('bycontact/:id')
+    getChatByContactId(@Param('id') id: string) {
+        return this.chatsService.getChatByContactId(id);
+    }
     @Get('user/:id')
     getUserById(@Param('id') id: string) {
         return this.chatsService.getUserById(id);
+    }
+    @Get('contact/:id')
+    getContactByChatId(@Param('id') id: string) {
+        return this.chatsService.getContactById(id);
     }
 
     @Get('/chats')
@@ -20,10 +28,10 @@ export class ChatsController {
         return this.chatsService.getAllChatsDemo();
     }
 
-    @Get('/contacts')
+    /*  @Get('/contacts')
     getContactsWithChats() {
         return this.chatsService.getContactsWithChats();
-    }
+    } */
 
     @Get(':id')
     getChatById(@Param('id') id: string) {
@@ -43,5 +51,10 @@ export class ChatsController {
     @Delete(':id')
     deleteChat(@Param('id') id: string) {
         return this.chatsService.deleteChat(id);
+    }
+
+    @Patch(':id/read-all')
+    readAllMessages(@Param('id') id: string) {
+        return this.chatsService.readAllMessages(id);
     }
 }

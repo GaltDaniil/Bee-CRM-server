@@ -9,12 +9,12 @@ export class FilesService {
         try {
             const partName = nanoid(24);
             const fileName = messenger_id + '.jpg';
-            const filePath = path.resolve(__dirname, '../..', `static/avatars`);
+            const filePath = path.resolve(__dirname, '../..', `assets/avatars`);
             if (!fs.existsSync(filePath)) {
                 fs.mkdirSync(filePath, { recursive: true });
             }
             fs.writeFileSync(path.join(filePath, fileName), file);
-            return 'static/avatars/' + fileName;
+            return 'assets/avatars/' + fileName;
         } catch (error) {
             console.log(error);
             throw new HttpException(

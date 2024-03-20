@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { MessagesService } from './messages.service';
 import { Message } from './messages.model';
@@ -25,5 +25,10 @@ export class MessagesController {
     @Get(':id')
     getMessagesByIdDemo(@Param('id') id: string) {
         return this.messagesService.getMessagesByIdDemo(id);
+    }
+
+    @Patch(':id/readed')
+    readAllMessage(@Param('id') id: string) {
+        return this.messagesService.readMessage(id);
     }
 }

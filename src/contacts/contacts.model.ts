@@ -1,10 +1,12 @@
 import { Column, DataType, Table, Model, HasMany } from 'sequelize-typescript';
+import { Card } from 'src/cards/cards.model';
 import { Chat } from 'src/chats/chats.model';
 
 interface ContactCreationAttrs {
     account_id: string;
     contact_name: string;
     contact_photo_url: string;
+    contact_id?: string;
 }
 
 @Table({ tableName: 'contacts' })
@@ -50,4 +52,7 @@ export class Contact extends Model<Contact, ContactCreationAttrs> {
 
     @HasMany(() => Chat, { onDelete: 'cascade' })
     chats: Chat[];
+
+    @HasMany(() => Card, { onDelete: 'cascade' })
+    cards: Card[];
 }

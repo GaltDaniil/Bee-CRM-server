@@ -36,7 +36,7 @@ export class User extends Model<User, UserCreationAttrs> {
     user_role: string;
 
     @ApiProperty({ example: 'online', description: 'статус пользователя' })
-    @Column({ type: DataType.STRING, allowNull: false })
+    @Column({ type: DataType.STRING, allowNull: true, defaultValue: 'online' })
     user_status: string;
 
     @ApiProperty({ example: 'path/img.jpg', description: 'URL путь к фото пользователя' })
@@ -47,6 +47,6 @@ export class User extends Model<User, UserCreationAttrs> {
     @Column({ type: DataType.STRING, allowNull: true, defaultValue: '' })
     user_about: string;
 
-    @Column({ type: DataType.ARRAY(DataType.STRING), allowNull: true, defaultValue: 'online' })
+    @Column({ type: DataType.ARRAY(DataType.STRING), allowNull: true })
     user_shortcuts: string[];
 }
