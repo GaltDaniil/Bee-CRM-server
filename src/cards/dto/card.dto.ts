@@ -14,6 +14,7 @@ export class CreateCardDto {
     card_client_url: string;
     card_deal_manager: string;
     card_deal_manager_email: string;
+    card_deal_files: string[];
     card_utm_source: string;
     card_utm_medium: string;
     card_utm_campaign: string;
@@ -38,6 +39,7 @@ export class UpdateCardDto {
     card_client_url?: string;
     card_deal_manager?: string;
     card_deal_manager_email?: string;
+    card_deal_files?: string[];
     card_utm_source?: string;
     card_utm_medium?: string;
     card_utm_campaign?: string;

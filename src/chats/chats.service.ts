@@ -50,6 +50,7 @@ export class ChatsService {
     async getAllChatsDemo() {
         try {
             const chats = await this.chatRepository.findAll({
+                logging: false,
                 include: [
                     {
                         model: this.messageRepository,
@@ -174,37 +175,6 @@ export class ChatsService {
         }
     }
 
-    /* async getContactsWithChats() {
-        const contactWithChats = await this.contactsRepository.findAll({
-            include: [
-                {
-                    model: this.chatRepository,
-                },
-            ],
-            where: {},
-        });
-
-        return contactWithChats.map((contact) => ({
-            contact_id: contact.contact_id,
-            contact_photo_url: contact.contact_photo_url || '',
-            contact_name: contact.contact_name || '',
-            contact_about: contact.contact_about || '',
-            contact_status: contact.contact_status || 'offline',
-            details: {
-                emails: contact.contact_email ? [contact.contact_email] : [],
-                phones: contact.contact_phone ? [contact.contact_phone] : [],
-                title: '', // Добавьте логику для этого поля
-                company: '', // Добавьте логику для этого поля
-                birthday: contact.contact_birthday || '',
-                address: contact.contact_address || '',
-            },
-            attachments: {
-                media: [],
-                docs: [],
-                links: [],
-            },
-        }));
-    } */
     async addUnreadCount(chat_id: string) {
         this.chatRepository.update(
             { unread_count: Sequelize.literal('"unread_count" + 1') },

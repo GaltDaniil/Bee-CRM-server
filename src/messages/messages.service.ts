@@ -8,6 +8,7 @@ import { ChatsService } from 'src/chats/chats.service';
 import { TelegramService } from 'src/messengers/telegram/telegram.service';
 import { EventGateway } from 'src/event/event.gateway';
 import { VkService } from 'src/messengers/vk/vk.service';
+import { Attachment } from 'src/attachments/attachments.model';
 
 const nanoid = customAlphabet('abcdef123456789', 24);
 
@@ -51,15 +52,16 @@ export class MessagesService {
         try {
             const messages = await this.messageRepository.findAll({
                 where: { chat_id: id },
+                include: [{ model: Attachment }],
             });
-            return messages.map((message) => ({
+            return messages; /* messages.map((message) => ({
                 message_id: message.message_id,
                 chat_id: message.chat_id,
                 contact_id: message.contact_id,
                 manager_id: message.manager_id,
                 message_value: message.message_value,
                 createdAt: message.createdAt,
-            }));
+            })); */
         } catch (error) {
             console.log(error);
         }

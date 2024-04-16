@@ -1,4 +1,13 @@
-import { Column, DataType, Table, Model, BelongsTo, ForeignKey } from 'sequelize-typescript';
+import {
+    Column,
+    DataType,
+    Table,
+    Model,
+    BelongsTo,
+    ForeignKey,
+    HasMany,
+} from 'sequelize-typescript';
+import { Attachment } from 'src/attachments/attachments.model';
 import { Chat } from 'src/chats/chats.model';
 import { Contact } from 'src/contacts/contacts.model';
 import { User } from 'src/users/users.model';
@@ -35,6 +44,9 @@ export class Message extends Model<Message, MessageCreationAttrs> {
 
     @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
     is_readed: string;
+
+    @HasMany(() => Attachment, { onDelete: 'cascade' })
+    attachments: Attachment[];
 
     @BelongsTo(() => Chat)
     chat: Chat;

@@ -1,5 +1,5 @@
 import { CardsService } from './cards.service';
-import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, UseInterceptors } from '@nestjs/common';
 import { CreateCardDto, UpdateCardDto, UpdateCardStatusDto } from './dto/card.dto';
 
 @Controller('scrumboard/boards')

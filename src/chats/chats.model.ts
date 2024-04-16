@@ -7,6 +7,7 @@ import {
     HasMany,
     ForeignKey,
 } from 'sequelize-typescript';
+import { Attachment } from 'src/attachments/attachments.model';
 import { Contact } from 'src/contacts/contacts.model';
 import { Message } from 'src/messages/messages.model';
 
@@ -47,14 +48,14 @@ export class Chat extends Model<Chat, ChatCreationAttrs> {
     messenger_type: string;
 
     @Column({ type: DataType.STRING, allowNull: true })
-    from_url: string; /* 
+    from_url: string;
 
-    @ForeignKey(() => Message)
-    @Column({ type: DataType.STRING, allowNull: true })
-    chat_last_message: string; */
     @BelongsTo(() => Contact)
     contact: Contact;
 
     @HasMany(() => Message, { onDelete: 'cascade' })
     messages: Message[];
+
+    @HasMany(() => Attachment, { onDelete: 'cascade' })
+    attachments: Attachment[];
 }

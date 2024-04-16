@@ -25,6 +25,12 @@ import { BoardsModule } from './boards/boards.module';
 import { CardsModule } from './cards/cards.module';
 import { ListsModule } from './lists/lists.module';
 import { CommentsModule } from './comments/comments.module';
+import { AttachmentsModule } from './attachments/attachments.module';
+import { Card } from './cards/cards.model';
+import { Attachment } from './attachments/attachments.model';
+import { List } from './lists/lists.model';
+import { Board } from './boards/boards.model';
+import { Comment } from './comments/comments.model';
 
 @Module({
     imports: [
@@ -36,7 +42,7 @@ import { CommentsModule } from './comments/comments.module';
             username: process.env.POSTGRES_USER,
             password: process.env.POSTGRES_PASSWORD,
             database: process.env.POSTGRES_DB,
-            models: [User, Chat, Contact, Message],
+            models: [User, Chat, Contact, Message, Card, Attachment, List, Board, Comment],
             autoLoadModels: true,
         }),
         ServeStaticModule.forRoot({
@@ -57,6 +63,7 @@ import { CommentsModule } from './comments/comments.module';
         CardsModule,
         ListsModule,
         CommentsModule,
+        AttachmentsModule,
     ],
     controllers: [],
     providers: [],

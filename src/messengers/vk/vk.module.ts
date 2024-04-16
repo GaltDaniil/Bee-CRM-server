@@ -6,6 +6,7 @@ import { FilesModule } from 'src/files/files.module';
 import { EventModule } from 'src/event/event.module';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { Message } from 'src/messages/messages.model';
+import { AttachmentsModule } from 'src/attachments/attachments.module';
 
 @Module({
     exports: [VkService],
@@ -16,6 +17,7 @@ import { Message } from 'src/messages/messages.model';
         ContactsModule,
         FilesModule,
         EventModule,
+        AttachmentsModule,
     ],
 })
 export class VkModule {}

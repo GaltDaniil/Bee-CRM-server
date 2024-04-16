@@ -8,7 +8,7 @@ import { nanoid } from 'nanoid';
 export class CommentsService {
     constructor(@InjectModel(Comment) private commentRepository: typeof Comment) {}
 
-    async createСomment(dto: CreateCommentDto) {
+    async createComment(dto: CreateCommentDto) {
         try {
             dto.comment_id = nanoid();
             const comment = await this.commentRepository.create(dto);
@@ -19,7 +19,7 @@ export class CommentsService {
         }
     }
 
-    async getСomment(id) {
+    async getOneComment(id) {
         try {
             const comment = await this.commentRepository.findOne({
                 where: {
@@ -33,7 +33,7 @@ export class CommentsService {
         }
     }
 
-    async getСomments() {
+    async getAllComments() {
         try {
             const comments = await this.commentRepository.findAll();
             return comments;

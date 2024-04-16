@@ -129,7 +129,6 @@ export class TelegramService {
         const isChat = await this.chatsService.getChatByMessengerId(messenger_id);
 
         if (!isChat) {
-            console.log('создание контакта из messageHandler');
             const contact_name: string = msg.chat.first_name || '';
             const messenger_username: string = msg.from?.username || '';
 

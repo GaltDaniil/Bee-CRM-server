@@ -38,6 +38,7 @@
     "class-validator": "^0.14.0",
     "date-fns": "^2.30.0",
     "dotenv": "^16.3.1",
+    "http-build-query": "^0.7.0",
     "mysql2": "^3.6.5",
     "nanoid": "^3.3.7",
     "node-telegram-bot-api": "^0.64.0",
@@ -51,7 +52,8 @@
     "sequelize-typescript": "^2.1.5",
     "socket.io": "^4.7.2",
     "swagger-ui-express": "^5.0.0",
-    "vk-io": "^4.8.3"
+    "vk-io": "^4.8.3",
+    "zadarma": "^1.1.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",

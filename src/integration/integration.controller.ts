@@ -1,5 +1,13 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { IntegrationService } from './integration.service';
+import * as crypto from 'crypto';
+import * as querystring from 'querystring';
+import { api } from 'zadarma';
+
+import * as dotenv from 'dotenv';
+dotenv.config();
+
+const { NOVOFON_USER_KEY, NOVOFON_SECRET_KEY } = process.env;
 
 interface QueryParams {
     company_name: string;
@@ -64,5 +72,47 @@ export class IntegrationController {
     @Get('/getcourse/bothelp')
     getCourse(@Query() query: { phone: string; email: string }) {
         return this.integrationService.checkUserFromBh(query);
+    }
+
+    @Get('/novofon')
+    getNovofon(@Query() query) {
+        console.log('Уведомление ', query);
+    }
+
+    @Get('/novofon/get')
+    novofonGet(@Query() query) {
+        const getMethod = async (query) => {
+            let dataObj = await api({
+                api_method: query,
+                api_user_key: NOVOFON_USER_KEY,
+                api_secret_key: NOVOFON_SECRET_KEY,
+            });
+            console.log(dataObj);
+            return dataObj;
+        };
+        return getMethod(query);
+    }
+    @Get('/novofon/callback')
+    novofonPost(@Query() query) {
+        const callback = async (query) => {
+            console.log('query', query);
+            console.log('query.from', query.from);
+            console.log('query.to', query.to);
+            console.log('query.sip', query.sip);
+            let response = await api({
+                api_method: '/v1/request/callback/',
+                api_user_key: NOVOFON_USER_KEY,
+                api_secret_key: NOVOFON_SECRET_KEY,
+                params: {
+                    from: query.from,
+                    to: query.to,
+                    sip: query.sip,
+                    /* predicted: query.predicted, */
+                },
+            });
+            console.log('response', response);
+            return response;
+        };
+        return callback(query);
     }
 }

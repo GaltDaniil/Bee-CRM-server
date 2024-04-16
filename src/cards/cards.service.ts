@@ -7,6 +7,8 @@ import { Card } from './cards.model';
 import { EventGateway } from 'src/event/event.gateway';
 import { Contact } from 'src/contacts/contacts.model';
 import { User } from 'src/users/users.model';
+import { Attachment } from 'src/attachments/attachments.model';
+import { Comment } from 'src/comments/comments.model';
 
 @Injectable()
 export class CardsService {
@@ -30,8 +32,11 @@ export class CardsService {
                         user_email: dto.card_deal_manager_email,
                     },
                 });
+                console.log('есть ли card_deal_manager_email?', dto.card_deal_manager_email);
                 if (user) {
-                    dto.memberIds.push(user.user_id);
+                    console.log('шарим юзера', user);
+                    console.log('проверяем ID юзера', user.user_id);
+                    dto.memberIds = [user.user_id];
                 }
             }
 
@@ -66,6 +71,17 @@ export class CardsService {
                 where: {
                     card_id: id,
                 },
+                attributes: {
+                    exclude: ['updatedAt'],
+                },
+                include: [
+                    { model: Attachment },
+                    { model: Comment },
+                    {
+                        model: Contact,
+                        /* attributes: ['contact_name', 'contact_email', 'contact_phone'], */
+                    },
+                ],
             });
             return card;
         } catch (error) {
@@ -90,7 +106,20 @@ export class CardsService {
 
     async getCards(board_id) {
         try {
-            const cards = await this.cardRepository.findAll({ where: { board_id } });
+            const cards = await this.cardRepository.findAll({
+                where: { board_id },
+                attributes: {
+                    exclude: ['updatedAt'],
+                },
+                include: [
+                    { model: Attachment },
+                    { model: Comment },
+                    {
+                        model: Contact,
+                        /* attributes: ['contact_name', 'contact_email', 'contact_phone'], */
+                    },
+                ],
+            });
             return cards;
         } catch (error) {
             console.log(error);
@@ -107,20 +136,38 @@ export class CardsService {
                 returning: true,
             });
 
-            const contact = await this.contactRepository.findByPk(updatedCards[0].contact_id);
-
             if (updatedRowsCount === 0) {
                 throw new NotFoundException(`Карточа с id ${dto.card_id} не найдена`);
             }
 
-            this.changeStatusInGc(updatedCards[0], contact);
+            const updatedCard = await this.cardRepository.findByPk(dto.card_id, {
+                attributes: {
+                    exclude: ['updatedAt'],
+                },
+                include: [
+                    { model: Attachment },
+                    { model: Comment },
+                    {
+                        model: Contact,
+                        /* attributes: ['contact_name', 'contact_email', 'contact_phone'], */
+                    },
+                ],
+            });
+
+            if (dto.memberIds) {
+                const contact = await this.contactRepository.findByPk(updatedCards[0].contact_id);
+                this.changeStatusInGc(updatedCard, contact);
+            }
             this.EventGateway.ioServer.emit('updateBoard');
-            return updatedCards[0];
+
+            return updatedCard;
         } catch (error) {
             console.log(error);
             console.log('Ошибка при обновлении Карточки');
+            return { success: false, error: 'Ошибка при обновлении карточки' };
         }
     }
+
     async updateCardStatusFromBee(card_id, dto: UpdateCardStatusDto) {
         try {
             dto.card_deal_status = this.convertListIdToStatus(dto.list_id);
@@ -145,9 +192,21 @@ export class CardsService {
             if (updatedRowsCount === 0) {
                 throw new NotFoundException(`Карточа с id ${card_id} не найдена`);
             }
+            const updatedCard = await this.cardRepository.findByPk(card_id, {
+                attributes: {
+                    exclude: ['updatedAt'],
+                },
+                include: [
+                    { model: Attachment },
+                    {
+                        model: Contact,
+                        /* attributes: ['contact_name', 'contact_email', 'contact_phone'], */
+                    },
+                ],
+            });
             this.EventGateway.ioServer.emit('updateBoard');
 
-            this.changeStatusInGc(updatedCards[0], contact);
+            this.changeStatusInGc(updatedCard, contact);
 
             return updatedCards;
         } catch (error) {

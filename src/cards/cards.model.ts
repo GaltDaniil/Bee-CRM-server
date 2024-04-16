@@ -1,5 +1,15 @@
-import { Column, DataType, Table, Model, BelongsTo, ForeignKey } from 'sequelize-typescript';
+import {
+    Column,
+    DataType,
+    Table,
+    Model,
+    BelongsTo,
+    ForeignKey,
+    HasMany,
+} from 'sequelize-typescript';
+import { Attachment } from 'src/attachments/attachments.model';
 import { Board } from 'src/boards/boards.model';
+import { Comment } from 'src/comments/comments.model';
 import { Contact } from 'src/contacts/contacts.model';
 import { List } from 'src/lists/lists.model';
 
@@ -60,17 +70,14 @@ export class Card extends Model<Card, CardCreationAttrs> {
     @Column({ type: DataType.ARRAY(DataType.STRING), allowNull: true, defaultValue: [] })
     memberIds: string[];
 
-    @Column({ type: DataType.ARRAY(DataType.STRING), allowNull: true, defaultValue: [] })
-    attachments: string[];
-
     @Column({ type: DataType.BOOLEAN, allowNull: true, defaultValue: false })
     card_subscribed: boolean;
 
     @Column({ type: DataType.ARRAY(DataType.STRING), allowNull: true, defaultValue: [] })
     card_checklists: string[];
 
-    @Column({ type: DataType.ARRAY(DataType.STRING), allowNull: true, defaultValue: [] })
-    card_activities: string[];
+    /* @Column({ type: DataType.ARRAY(DataType.STRING), allowNull: true, defaultValue: [] })
+    card_activities: string[]; */
 
     // Данные карточки с Геткурса
 
@@ -136,8 +143,14 @@ export class Card extends Model<Card, CardCreationAttrs> {
     card_deal_payed: string;
 
     @BelongsTo(() => List)
-    board: List;
+    list: List;
 
-    /* @BelongsTo(() => Contact)
-    contact: Contact; */
+    @BelongsTo(() => Contact)
+    contact: Contact;
+
+    @HasMany(() => Attachment, { onDelete: 'cascade' })
+    attachments: Attachment[];
+
+    @HasMany(() => Comment, { onDelete: 'cascade' })
+    activities: Comment[];
 }
