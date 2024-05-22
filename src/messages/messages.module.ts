@@ -12,13 +12,7 @@ import { VkModule } from 'src/messengers/vk/vk.module';
 @Module({
     controllers: [MessagesController],
     providers: [MessagesService],
-    imports: [
-        SequelizeModule.forFeature([Message]),
-        ChatsModule,
-        TelegramModule,
-        VkModule,
-        EventModule,
-    ],
+    imports: [SequelizeModule.forFeature([Message]), ChatsModule, EventModule],
     exports: [MessagesService],
 })
 export class MessagesModule {}

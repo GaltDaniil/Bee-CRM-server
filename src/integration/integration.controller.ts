@@ -40,11 +40,22 @@ interface QueryParams {
 export class IntegrationController {
     constructor(private integrationService: IntegrationService) {}
 
+    @Post('bothelp/nutri')
+    createNutriLead(@Body() body) {
+        return this.integrationService.createLeadFromKN(body);
+    }
+
+    @Post('bothelp/start')
+    createStartLead(@Body() body) {
+        return this.integrationService.createLeadFromBS(body);
+    }
+
     @Get('/getcourse/order/new')
     getcourseNewOrder(
         @Query()
         query: QueryParams,
     ) {
+        console.log(query);
         return this.integrationService.getcourseNewOrder(query);
     }
 
@@ -54,9 +65,12 @@ export class IntegrationController {
         query: {
             card_deal_num: string;
             card_deal_status: string;
+            card_deal_price: string;
+            card_deal_left_cost: string;
+            card_deal_payed_money: string;
         },
     ) {
-        console.log('старт изменение из геткурса статуса');
+        console.log('Новый статус в Getcourse');
         return this.integrationService.getcourseStatusOrder(query);
     }
 
@@ -67,6 +81,11 @@ export class IntegrationController {
     ) {
         console.log(query);
         //return this.integrationService.getcoursePaidOrder(query);
+    }
+
+    @Get('/getcourse/offers')
+    getcourseOffers() {
+        return this.integrationService.offersList();
     }
 
     @Get('/getcourse/bothelp')

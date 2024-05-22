@@ -33,6 +33,55 @@ export class ChatsService {
         }
     }
 
+    async getPartChats(limit) {
+        try {
+            const chats = await this.chatRepository.findAll({
+                limit,
+                logging: false,
+                include: [
+                    {
+                        model: this.messageRepository,
+                        attributes: [
+                            'message_id',
+                            'message_value',
+                            'createdAt',
+                            // Другие поля сообщения, которые вы хотите включить
+                        ],
+                        limit: 1, // Получаем только одно последнее сообщение
+                        order: [['createdAt', 'DESC']], // Сортируем по убыванию даты
+                    },
+                    {
+                        model: this.contactsRepository, // Предположим, что у вас есть модель Contact
+                        attributes: ['contact_name', 'contact_status', 'contact_photo_url'],
+                    },
+                ],
+                order: [['updatedAt', 'DESC']],
+            });
+            return chats.map((chat) => {
+                return {
+                    chat_id: chat.chat_id,
+                    contact_id: chat.contact_id,
+                    unread_count: chat.unread_count,
+                    messenger_id: chat.messenger_id,
+                    messenger_username: chat.messenger_username,
+                    messenger_type: chat.messenger_type,
+                    instagram_chat_id: chat.instagram_chat_id,
+                    from_url: chat.from_url,
+                    chat_muted: chat.chat_muted,
+                    lastMessage: chat.messages.length > 0 ? chat.messages[0].message_value : null,
+                    lastMessageAt: chat.messages.length > 0 ? chat.messages[0].createdAt : null,
+                    chat_contact: {
+                        contact_name: chat.contact ? chat.contact.contact_name : null,
+                        contact_status: chat.contact ? chat.contact.contact_status : null,
+                        contact_photo_url: chat.contact ? chat.contact.contact_photo_url : null,
+                    },
+                };
+            });
+        } catch (error) {
+            console.log('ошибка при загрузки части чатов', error);
+        }
+    }
+
     async getUserById(id: string) {
         try {
             const { user_id, user_name, user_email, user_status, user_photo_url, user_about } =
@@ -125,7 +174,7 @@ export class ChatsService {
             //@ts-ignore
             dto.chat_id = nanoid();
             const chat = await this.chatRepository.create(dto);
-            tgBot.sendMessage(680306494, 'Пришло новое сообщение в чат');
+
             return chat;
         } catch (error) {
             console.log(error);

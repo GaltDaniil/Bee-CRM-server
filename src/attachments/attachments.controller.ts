@@ -31,6 +31,7 @@ export class AttachmentsController {
                     attachment_type: 'image',
                     attachment_src:
                         'https://beechat.ru/assets/card/attachments/' + fileData.fileName,
+                    attachment_market: {},
                 },
                 fileData.filePath,
             );

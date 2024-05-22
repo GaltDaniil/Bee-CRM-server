@@ -4,24 +4,37 @@ import { InjectModel } from '@nestjs/sequelize';
 import { nanoid } from 'nanoid';
 import { List } from 'src/lists/lists.model';
 import { Card } from 'src/cards/cards.model';
+import { ListsService } from 'src/lists/lists.service';
 
 @Injectable()
 export class BoardsService {
     constructor(
         @InjectModel(Board) private boardRepository: typeof Board,
-        @InjectModel(List) private listRepository: typeof List,
+        private listsService: ListsService,
     ) {}
 
     async createBoard(dto) {
         try {
+            console.log('началось создание доски в сервисе');
             dto.board_id = nanoid();
 
             const board = await this.boardRepository.create({
                 ...dto,
                 board_id: dto.board_id,
-                board_lists: [{ list_id: '', list_cards: [] }],
+                board_title: 'Новая доска',
             });
-            console.log(board);
+            const listDto = {
+                list_id: '',
+                board_id: board.board_id,
+                list_title: 'Новый лист',
+            };
+            const list = await this.listsService.createList(board.board_id, listDto);
+            await this.boardRepository.update(
+                {
+                    board_lists: [{ list_id: list.list_id, list_cards: [] }],
+                },
+                { where: { board_id: board.board_id } },
+            );
             return board;
         } catch (error) {
             console.log(error);
@@ -100,6 +113,7 @@ export class BoardsService {
                 },
                 returning: true,
             });
+            console.log(updatedRowsCount, updatedBoards);
             if (updatedRowsCount === 0) {
                 throw new NotFoundException(`Доска с id ${id} не найдена при обновлении`);
             }

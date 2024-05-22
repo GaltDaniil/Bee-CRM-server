@@ -7,17 +7,18 @@ import { EventModule } from 'src/event/event.module';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { Message } from 'src/messages/messages.model';
 import { AttachmentsModule } from 'src/attachments/attachments.module';
+import { MessagesModule } from 'src/messages/messages.module';
 
 @Module({
     exports: [VkService],
     providers: [VkService],
     imports: [
-        SequelizeModule.forFeature([Message]),
         ChatsModule,
         ContactsModule,
         FilesModule,
         EventModule,
         AttachmentsModule,
+        MessagesModule,
     ],
 })
 export class VkModule {}

@@ -9,5 +9,6 @@ import { Board } from 'src/boards/boards.model';
     providers: [ListsService],
     imports: [SequelizeModule.forFeature([List, Board])],
     controllers: [ListsController],
+    exports: [ListsService],
 })
 export class ListsModule {}

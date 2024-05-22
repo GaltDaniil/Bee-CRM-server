@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ChatsService } from './chats.service';
 import { CreateChatDto } from './dto/create-chat.dto';
 
@@ -10,6 +10,13 @@ export class ChatsController {
     getAllChats() {
         return this.chatsService.getAllChats();
     }
+
+    @Get('/part')
+    getPartChats(@Query('limit') limit: number) {
+        console.log(limit);
+        return this.chatsService.getPartChats(limit);
+    }
+
     @Get('bycontact/:id')
     getChatByContactId(@Param('id') id: string) {
         return this.chatsService.getChatByContactId(id);

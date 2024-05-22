@@ -36,8 +36,8 @@ export class CardsController {
     }
 
     @Delete(':board_id/cards/:id')
-    deleteCard(@Param('id') id: string) {
+    deleteCard(@Param('board_id') board_id: string, @Param('id') card_id: string) {
         console.log('удаление карты');
-        return this.cardsService.deleteCard(id);
+        return this.cardsService.deleteCard(board_id, card_id);
     }
 }

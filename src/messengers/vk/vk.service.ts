@@ -23,6 +23,7 @@ import { Message } from 'src/messages/messages.model';
 import { InjectModel } from '@nestjs/sequelize';
 import { customAlphabet } from 'nanoid';
 import { AttachmentsService } from 'src/attachments/attachments.service';
+import { vkBot } from '../bots.init';
 const nanoid = customAlphabet('abcdef123456789', 24);
 
 dotenv.config();
@@ -32,26 +33,24 @@ const { VK_TOKEN } = process.env;
 @Injectable()
 export class VkService {
     constructor(
-        @InjectModel(Message) private messageRepository: typeof Message,
         private contactsService: ContactsService,
         private chatsService: ChatsService,
+        private messagesService: MessagesService,
         private attachmentsService: AttachmentsService,
         private filesService: FilesService,
         private eventGateway: EventGateway,
     ) {}
-    vkBot: VK;
+    VKBot: VK;
 
     init() {
-        this.vkBot = new VK({
-            token: VK_TOKEN!,
-        });
+        this.VKBot = vkBot;
 
-        this.vkBot.updates.on('group_join', (context) => {
+        this.VKBot.updates.on('group_join', (context) => {
             console.log('group_join', context);
         });
 
-        this.vkBot.updates.on('message_new', this.messageHandler);
-        this.vkBot.updates.on('message', async (context) => {
+        this.VKBot.updates.on('message_new', this.messageHandler);
+        this.VKBot.updates.on('message', async (context) => {
             try {
                 console.log('от группы или админа', context);
                 /* if (context.isGroup == true) return; */
@@ -77,7 +76,7 @@ export class VkService {
                 console.log('какой-та ошибк', error);
             }
         });
-        this.vkBot.updates.start().catch(console.error);
+        this.VKBot.updates.start().catch(console.error);
     }
 
     messageHandler = async (context) => {
@@ -105,7 +104,7 @@ export class VkService {
                 from_url = parsedParams.from_url || '';
             }
 
-            const vkData = await this.vkBot.api.users.get({
+            const vkData = await this.VKBot.api.users.get({
                 user_ids: [context.senderId],
                 fields: ['photo_200_orig', 'nickname'],
             });
@@ -161,22 +160,13 @@ export class VkService {
     };
 
     sendMessageFromVk = async (params, attachments?) => {
-        //@ts-ignore
-        params.message_id = nanoid();
-        const message = await this.messageRepository.create(params);
+        const message = await this.messagesService.createMessage(params);
 
         console.log('context.attachment', attachments);
         if (attachments) {
             this.chechAttachments(attachments, message.chat_id, message.message_id);
         }
-
-        if (params.manager_id) {
-            this.chatsService.readAllMessages(params.chat_id);
-        } else {
-            this.chatsService.addUnreadCount(params.chat_id);
-        }
-
-        this.eventGateway.ioServer.emit('update');
+        this.eventGateway.ioServer.emit('update', message);
 
         return message;
     };
@@ -210,7 +200,7 @@ export class VkService {
                 const params = {
                     attachment_name: attachmentWithType.id.toString(),
                     attachment_src: attachment_url,
-                    attachment_type: 'photo',
+                    attachment_type: 'image',
                     attachment_url,
                     attachment_market: {},
                     chat_id,

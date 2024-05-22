@@ -13,6 +13,8 @@ import { InjectModel } from '@nestjs/sequelize';
 import { customAlphabet } from 'nanoid';
 import { EventGateway } from 'src/event/event.gateway';
 import { tgBot } from '../bots.init';
+import { AttachmentsService } from 'src/attachments/attachments.service';
+import { MessagesService } from 'src/messages/messages.service';
 const nanoid = customAlphabet('abcdef123456789', 24);
 
 dotenv.config();
@@ -21,10 +23,11 @@ const { TELEGRAM_TOKEN } = process.env;
 @Injectable()
 export class TelegramService {
     constructor(
-        @InjectModel(Message) private messageRepository: typeof Message,
         private contactsService: ContactsService,
+        private messagesService: MessagesService,
         private chatsService: ChatsService,
         private filesService: FilesService,
+        private attachmentsService: AttachmentsService,
         private eventGateway: EventGateway,
     ) {}
     telegramBot: TelegramBot;
@@ -69,7 +72,7 @@ export class TelegramService {
             if (!isChat) {
                 console.log('создание контакта из startCommand');
                 // нужно создать контакт и потом чат.
-                //Получится дублеж.будут двойные контакты. Но пока пофиг
+                //Получится дублеж .будут двойные контакты. Но пока пофиг
                 const contact_name: string = msg.chat.first_name || '';
                 const messenger_username: string = msg.from?.username || '';
 
@@ -115,16 +118,17 @@ export class TelegramService {
     };
 
     messageHandler = async (msg: TelegramBot.message) => {
+        console.log('Сообщение из телеги', msg);
         const startCommandRegex = /^\/start/i;
-        if (msg.text!.length < 2) return;
+        if (msg.text && msg.text.length < 2) return;
         if (startCommandRegex.test(msg.text)) return;
-        console.log(msg);
         const messenger_id = msg.chat.id.toString();
         const messenger_type = 'telegram';
         let account_id: string = 'ecfafe4bc756935e17d93bec';
         let contact_id: string;
         let chat_id: string;
         let contact_photo_url: string;
+        let message_value = msg.text ? msg.text : '';
 
         const isChat = await this.chatsService.getChatByMessengerId(messenger_id);
 
@@ -133,7 +137,6 @@ export class TelegramService {
             const messenger_username: string = msg.from?.username || '';
 
             const avatarFile = await this.getTelegramAvatarFile(messenger_id);
-
             const fileName = await this.filesService.saveAvatarFromMessenger(
                 avatarFile,
                 messenger_id,
@@ -158,15 +161,33 @@ export class TelegramService {
             chat_id = isChat.chat_id;
             contact_id = isChat.contact_id;
         }
-        const params = {
-            message_value: msg.text as string,
-            message_type: 'text',
-            messenger_type: 'telegram',
-            manager_id: '',
-            contact_id,
-            chat_id,
-        };
-        this.sendMessageFromTelegram(params);
+
+        if (msg.photo && msg.photo.length > 0) {
+            const photoUrl = await this.telegramBot.getFileLink(msg.photo[2].file_id);
+            const response = await axios.get(photoUrl, { responseType: 'arraybuffer' });
+            const imageBuffer = Buffer.from(response.data, 'binary');
+            const fileExtension = photoUrl.split('.').pop();
+
+            const params = {
+                message_value: msg.caption ? msg.caption : ' ',
+                message_type: 'text',
+                messenger_type: 'telegram',
+                manager_id: '',
+                contact_id,
+                chat_id,
+            };
+            this.sendMessageFromTelegram(params, imageBuffer, fileExtension);
+        } else {
+            const params = {
+                message_value,
+                message_type: 'text',
+                messenger_type: 'telegram',
+                manager_id: '',
+                contact_id,
+                chat_id,
+            };
+            this.sendMessageFromTelegram(params);
+        }
     };
 
     getTelegramAvatarFile = async (messenger_id: string) => {
@@ -187,13 +208,24 @@ export class TelegramService {
         return '';
     };
 
-    sendMessageFromTelegram = async (params: CreateMessageDto) => {
+    sendMessageFromTelegram = async (params: CreateMessageDto, file?, fileExtension?) => {
         //@ts-ignore
-        params.message_id = nanoid();
-        const message = await this.messageRepository.create(params);
+        const message = await this.messagesService.createMessage(params);
 
-        this.chatsService.addUnreadCount(params.chat_id);
-        this.eventGateway.ioServer.emit('update');
+        //сюда нужно вставить attachments
+        if (file && fileExtension) {
+            const fileData = await this.filesService.saveChatImage(file, fileExtension);
+            const dto = {
+                message_id: message.message_id,
+                attachment_name: fileData.fileName,
+                attachment_url: 'assets/images/chats/' + fileData.fileName,
+                attachment_type: 'image',
+                attachment_src: 'https://beechat.ru/assets/images/chats/' + fileData.fileName,
+                attachment_market: {},
+            };
+            this.attachmentsService.createAttachment(dto, fileData.filePath);
+        }
+        this.eventGateway.ioServer.emit('update', { message });
 
         return message;
     };

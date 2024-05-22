@@ -20,10 +20,37 @@ export class CardsService {
         private EventGateway: EventGateway,
     ) {}
 
-    async createCard(boardId, dto: CreateCardDto) {
+    async createCardFromBh(dto: CreateCardDto) {
         try {
             dto.card_id = nanoid();
-            dto.board_id = 'QSZj8tM1PRsfs-DBZq3Ph';
+            const card = await this.cardRepository.create(dto);
+            const board = await this.boardRepository.findByPk(dto.board_id);
+
+            if (board) {
+                const updatedList = board.board_lists.map((el) => {
+                    if (el.list_id === dto.list_id) {
+                        el.list_cards = [card.card_id, ...el.list_cards];
+                    }
+                    return el;
+                });
+                await this.boardRepository.update(
+                    { board_lists: updatedList },
+                    {
+                        where: { board_id: dto.board_id },
+                    },
+                );
+            }
+            this.EventGateway.ioServer.emit('updateBoard');
+            return card;
+        } catch (error) {
+            console.log(error);
+            console.log('Ошибка при создании Карточки из ботхелпа');
+        }
+    }
+
+    async createCardFromGc(dto: CreateCardDto) {
+        try {
+            dto.card_id = nanoid();
             dto.list_id = this.convertStatusToListId(dto.card_deal_status);
 
             if (dto.card_deal_manager_email) {
@@ -41,7 +68,7 @@ export class CardsService {
             }
 
             const card = await this.cardRepository.create(dto);
-            const board = await this.boardRepository.findByPk(boardId);
+            const board = await this.boardRepository.findByPk(dto.board_id);
 
             if (board) {
                 const updatedList = board.board_lists.map((el) => {
@@ -53,7 +80,7 @@ export class CardsService {
                 await this.boardRepository.update(
                     { board_lists: updatedList },
                     {
-                        where: { board_id: boardId },
+                        where: { board_id: dto.board_id },
                     },
                 );
             }
@@ -273,15 +300,15 @@ export class CardsService {
         }
     }
 
-    async deleteCard(id) {
+    async deleteCard(board_id, card_id) {
         try {
-            const card = await this.cardRepository.findOne({ where: { card_id: id } });
+            const card = await this.cardRepository.findOne({ where: { card_id: card_id } });
 
             const board = await this.boardRepository.findOne({
-                where: { board_id: 'QSZj8tM1PRsfs-DBZq3Ph' },
+                where: { board_id: board_id },
             });
             if (!board) {
-                throw new NotFoundException(`Доска с id ${'QSZj8tM1PRsfs-DBZq3Ph'} не найдена`);
+                throw new NotFoundException(`Доска с id ${board_id} не найдена`);
             }
 
             const readyLists = board.board_lists.map((el) => {
@@ -300,12 +327,39 @@ export class CardsService {
                 },
             );
             this.EventGateway.ioServer.emit('updateBoard');
-            await this.cardRepository.destroy({ where: { card_id: id } });
+            await this.cardRepository.destroy({ where: { card_id: card_id } });
         } catch (error) {
             console.log(error);
             console.log('Ошибка при удалении Карточки');
         }
     }
+
+    private listIdFromStatus(status) {
+        if (status === 'Новый') {
+            return 'new';
+        } else if (status === 'В работе') {
+            return 'in_work';
+        } else if (status === 'Завершен') {
+            return 'payed';
+        } else if (status === 'Отменен') {
+            return 'cancelled';
+        } else if (status === 'Ожидаем оплаты') {
+            return 'y2yb7-iIWzaeiJ9q4kyKf';
+        } else if (status === 'Не подтвержден') {
+            return 'cancelled';
+        } else if (status === 'Ложный') {
+            return 'cancelled';
+        } else if (status === 'Отложен') {
+            return 'cancelled';
+        } else if (status === 'Частично оплачен') {
+            return 'part_payed';
+        } else if (status === 'Ожидаем возврата') {
+            return 'cancelled';
+        } else {
+            return 'what??';
+        }
+    }
+
     private convertStatusToListId(status) {
         if (status === 'Новый') {
             return 'new';

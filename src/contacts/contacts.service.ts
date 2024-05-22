@@ -23,6 +23,11 @@ export class ContactsService {
         return {};
     }
 
+    async getOneContactByEmail(email) {
+        const contacts = await this.contactRepository.findOne({ where: { contact_email: email } });
+        return contacts;
+    }
+
     async getAllContacts() {
         const contacts = await this.contactRepository.findAll();
         return contacts;

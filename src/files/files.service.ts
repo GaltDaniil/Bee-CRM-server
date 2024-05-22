@@ -37,7 +37,7 @@ export class FilesService {
             if (!fs.existsSync(filePath)) {
                 fs.mkdirSync(filePath, { recursive: true });
             }
-            console.log(`файл с именем ${fileName} по пути ${filePath} создается`);
+
             fs.writeFileSync(path.join(filePath, fileName), file.buffer);
             if (fileOriginalName && fileName && filePath) {
                 return { fileOriginalName, fileName, filePath };
@@ -48,6 +48,39 @@ export class FilesService {
 
             throw new HttpException(
                 'Произошла ошибка при сохранении файла-картинки в карточке',
+                HttpStatus.INTERNAL_SERVER_ERROR,
+            );
+        }
+    }
+
+    async saveChatImage(file, fileExtension) {
+        try {
+            console.log(file);
+            // Генерируем уникальное имя файла с использованием nanoid
+            const fileName = nanoid() + '.' + fileExtension;
+            // Путь к папке для сохранения изображений
+            const uploadDir = path.resolve(__dirname, '../..', 'assets/images/chats');
+
+            // Создаем папку, если она не существует
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
+            }
+            console.log(`файл с именем ${fileName} по пути ${uploadDir} создается`);
+            // Полный путь к файлу на сервере
+            const filePath = path.join(uploadDir, fileName);
+
+            // Записываем файл на сервер
+            fs.writeFileSync(filePath, file);
+
+            // Возвращаем относительный путь к файлу
+            if (fileName && filePath) {
+                return { fileName, filePath };
+            }
+        } catch (error) {
+            // Ловим исключение, если произошла ошибка при сохранении файла
+            console.log(error);
+            throw new HttpException(
+                'Произошла ошибка при сохранении файла',
                 HttpStatus.INTERNAL_SERVER_ERROR,
             );
         }

@@ -7,8 +7,8 @@ import { CreateMessageDto } from './dto/create-message.dto';
 import { ChatsService } from 'src/chats/chats.service';
 import { TelegramService } from 'src/messengers/telegram/telegram.service';
 import { EventGateway } from 'src/event/event.gateway';
-import { VkService } from 'src/messengers/vk/vk.service';
 import { Attachment } from 'src/attachments/attachments.model';
+import { tgBot, vkBot } from 'src/messengers/bots.init';
 
 const nanoid = customAlphabet('abcdef123456789', 24);
 
@@ -17,8 +17,6 @@ export class MessagesService {
     constructor(
         @InjectModel(Message) private messageRepository: typeof Message,
         private chatsService: ChatsService,
-        private telegramService: TelegramService,
-        private vkService: VkService,
         private eventGateway: EventGateway,
     ) {}
 
@@ -74,12 +72,30 @@ export class MessagesService {
             const message = await this.messageRepository.create(dto);
             if (!dto.manager_id) {
                 this.chatsService.addUnreadCount(dto.chat_id);
+                tgBot.sendMessage(
+                    680306494,
+                    `Пришло новое сообщение в чат https://beechat.ru/apps/chat/${message.chat_id}`,
+                    {
+                        /* parse_mode: 'MarkdownV2', */
+                        disable_web_page_preview: true,
+                    },
+                );
+                tgBot.sendMessage(
+                    360641449,
+                    `Пришло новое сообщение в чат https://beechat.ru/apps/chat/${message.chat_id} c текстом "${message.message_value}"`,
+                    {
+                        /* parse_mode: 'MarkdownV2', */
+                        disable_web_page_preview: true,
+                    },
+                );
+            } else {
+                this.chatsService.readAllMessages(dto.chat_id);
             }
             this.sendMessageToMessenger(dto.messenger_id, dto.messenger_type, dto.message_value);
-            this.eventGateway.ioServer.emit('update');
             return message;
         } catch (error) {
             console.log(error);
+            console.log();
         }
     }
 
@@ -100,13 +116,11 @@ export class MessagesService {
     ) {
         try {
             if (messenger_type === 'telegram') {
-                this.telegramService
-                    .getBot()
-                    .sendMessage(messenger_id, message_value, { is_bot_message: true });
+                tgBot.sendMessage(Number(messenger_id), message_value, { is_bot_message: true });
             }
             if (messenger_type === 'vk') {
                 const randomId = Math.floor(Math.random() * 1000000);
-                this.vkService.vkBot.api.messages.send({
+                vkBot.api.messages.send({
                     user_id: Number(messenger_id),
                     message: message_value,
                     random_id: randomId,
