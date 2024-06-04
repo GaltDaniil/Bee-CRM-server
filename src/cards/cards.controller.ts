@@ -1,6 +1,11 @@
 import { CardsService } from './cards.service';
 import { Body, Controller, Delete, Get, Param, Post, Put, UseInterceptors } from '@nestjs/common';
-import { CreateCardDto, UpdateCardDto, UpdateCardStatusDto } from './dto/card.dto';
+import {
+    CreateCardDto,
+    CreateCardFromBeeDto,
+    UpdateCardDto,
+    UpdateCardStatusDto,
+} from './dto/card.dto';
 
 @Controller('scrumboard/boards')
 export class CardsController {
@@ -23,6 +28,16 @@ export class CardsController {
     @Get(':board_id/cards/')
     getCards(@Param('board_id') board_id: string) {
         return this.cardsService.getCards(board_id);
+    }
+
+    @Post(':board_id/cards/create')
+    createCard(@Body() dto: CreateCardFromBeeDto) {
+        //добавляем недостающие list и board
+
+        //Есть ли такой клиент в базе, для него же будет карточка
+        //Берем email и по нему проверяем на наличие клиента
+
+        return this.cardsService.createCard(dto);
     }
 
     @Put(':board_id/cards/:id/')

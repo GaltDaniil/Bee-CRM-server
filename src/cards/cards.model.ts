@@ -108,6 +108,9 @@ export class Card extends Model<Card, CardCreationAttrs> {
     @Column({ type: DataType.STRING, allowNull: true })
     card_deal_manager_email: string;
 
+    @Column({ type: DataType.ARRAY(DataType.STRING), allowNull: true, defaultValue: [] })
+    card_deal_offers: string[];
+
     //URL ссылки
 
     @Column({ type: DataType.STRING, allowNull: true })

@@ -23,7 +23,21 @@ export class CreateCardDto {
     card_deal_created?: string;
     card_deal_payed?: string;
     memberIds?: string[];
+    card_deal_offers?: string[];
 }
+export class CreateCardFromBeeDto {
+    card_id: string;
+    board_id: string;
+    list_id: string;
+    contact_id: string;
+    chat_id: string;
+    card_deal_offers?: string[];
+    contact_email: string;
+    contact_first_name: string;
+    contact_last_name: string;
+    contact_phone: string;
+}
+
 export class UpdateCardDto {
     card_id?: string;
     list_id?: string;

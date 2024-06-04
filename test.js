@@ -2,17 +2,22 @@
 
 const data = {
     user: {
-        email: 'vm.artcube@gmail.com',
+        email: 'vm.artcube2@gmail.com',
+        phone: '89149243737',
+        first_name: 'Тестовый Даня',
+        addfields: { 'Чат в BeeCRM': 'https://beechat.ru/apps/chat/${}' },
     },
     system: {
         refresh_if_exists: 1,
     },
     deal: {
-        deal_number: '29900',
+        offer_code: '123123123',
+        deal_cost: '2990',
+        /* deal_number: '29900',
         deal_cost: '990',
         deal_status: 'in_work',
         product_title: 'Функциональный тренинг',
-        manager_email: null,
+        manager_email: null, */
     },
 };
 
@@ -24,14 +29,6 @@ const apiUrl = `https://linnik-fitness1.getcourse.ru/pl/api/deals`;
 const secret_key =
     'yvV24VmeuCCoG9ClBhNHcSLSbPrPAO6naFw84AAB6p5xrgLuVe1JSIYU7uvC1GQx69edITzqH9bpQWcJjgDRZJ0NUWgMK5pk5375rpHt3RQ7JcLVWmRBwVeZ0iSgqX1d';
 
-/* try {
-    const response = await axios.post('https://linnik-fitness1.getcourse.ru/pl/api/deals', {
-        data: base64Data,
-    });
-    console.log(response.data); // Результат запроса
-} catch (error) {
-    console.error(error);
-} */
 fetch(apiUrl, {
     method: 'POST',
     headers: {

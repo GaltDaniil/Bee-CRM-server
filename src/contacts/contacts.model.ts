@@ -5,6 +5,7 @@ import { Chat } from 'src/chats/chats.model';
 interface ContactCreationAttrs {
     account_id: string;
     contact_name: string;
+    contact_email: string;
     contact_photo_url: string;
     contact_id?: string;
 }
@@ -34,6 +35,15 @@ export class Contact extends Model<Contact, ContactCreationAttrs> {
 
     @Column({ type: DataType.STRING, allowNull: true })
     contact_address: string;
+
+    @Column({ type: DataType.BOOLEAN, allowNull: true, defaultValue: false })
+    contact_getcourse: boolean;
+
+    @Column({ type: DataType.BOOLEAN, allowNull: true, defaultValue: false })
+    contact_bothelp_kn: boolean;
+
+    @Column({ type: DataType.BOOLEAN, allowNull: true, defaultValue: false })
+    contact_bothelp_bs: boolean;
 
     @Column({ type: DataType.STRING, allowNull: true })
     contact_birthday: string;

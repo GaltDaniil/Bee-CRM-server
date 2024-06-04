@@ -1,7 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { nanoid } from 'nanoid';
-import { CreateCardDto, UpdateCardDto, UpdateCardStatusDto } from './dto/card.dto';
+import {
+    CreateCardDto,
+    CreateCardFromBeeDto,
+    UpdateCardDto,
+    UpdateCardStatusDto,
+} from './dto/card.dto';
 import { Board } from 'src/boards/boards.model';
 import { Card } from './cards.model';
 import { EventGateway } from 'src/event/event.gateway';
@@ -9,6 +14,11 @@ import { Contact } from 'src/contacts/contacts.model';
 import { User } from 'src/users/users.model';
 import { Attachment } from 'src/attachments/attachments.model';
 import { Comment } from 'src/comments/comments.model';
+import { Chat } from 'src/chats/chats.model';
+
+import * as dotenv from 'dotenv';
+dotenv.config();
+const { GC_SECRET_KEY } = process.env;
 
 @Injectable()
 export class CardsService {
@@ -17,6 +27,7 @@ export class CardsService {
         @InjectModel(Board) private boardRepository: typeof Board,
         @InjectModel(Contact) private contactRepository: typeof Contact,
         @InjectModel(User) private userRepository: typeof User,
+        @InjectModel(Chat) private chatRepository: typeof Chat,
         private EventGateway: EventGateway,
     ) {}
 
@@ -52,6 +63,7 @@ export class CardsService {
         try {
             dto.card_id = nanoid();
             dto.list_id = this.convertStatusToListId(dto.card_deal_status);
+            dto.card_deal_offers = this.convertOffersToArray(dto.card_deal_offers);
 
             if (dto.card_deal_manager_email) {
                 const user = await this.userRepository.findOne({
@@ -90,6 +102,54 @@ export class CardsService {
             console.log(error);
             console.log('Ошибка при создании Карточки');
         }
+    }
+
+    async createCard(dto: CreateCardFromBeeDto) {
+        let contact_id;
+
+        //Проверяем наличие контакта
+        const contact = await this.contactRepository.findOne({
+            where: {
+                contact_email: dto.contact_email,
+            },
+            include: [{ model: Card }],
+        });
+
+        if (!contact) {
+            // если нет контакта с таким мылом - мы просто обновляем старый контакт.
+            let contactName = dto.contact_first_name;
+            if (dto.contact_last_name) {
+                contactName = contactName + ' ' + dto.contact_last_name;
+            }
+
+            await this.contactRepository.update(
+                {
+                    contact_name: contactName,
+                    contact_email: dto.contact_email,
+                    contact_phone: dto.contact_phone,
+                },
+                { where: { contact_id: dto.contact_id } },
+            );
+            contact_id = dto.contact_id;
+        } else {
+            contact_id = contact.contact_id;
+            await this.chatRepository.update(
+                { contact_id: contact.contact_id },
+                {
+                    where: {
+                        chat_id: dto.chat_id,
+                    },
+                },
+            );
+            await this.contactRepository.destroy({ where: { contact_id: dto.contact_id } });
+        }
+        const responce = await this.createNewOrderAndUser(dto);
+        console.log('responce после создания в GC', responce);
+        /* if(responce.data.success){
+            const card = await this.cardRepository.create();
+        }else {
+            throw new NotFoundException(`Возникла ошибка при создании заказа в GC`);
+        } */
     }
 
     async getCard(id) {
@@ -334,6 +394,8 @@ export class CardsService {
         }
     }
 
+    // Доп функции
+
     private listIdFromStatus(status) {
         if (status === 'Новый') {
             return 'new';
@@ -433,16 +495,13 @@ export class CardsService {
 
         const apiUrl = `https://linnik-fitness1.getcourse.ru/pl/api/deals`;
 
-        const secret_key =
-            'yvV24VmeuCCoG9ClBhNHcSLSbPrPAO6naFw84AAB6p5xrgLuVe1JSIYU7uvC1GQx69edITzqH9bpQWcJjgDRZJ0NUWgMK5pk5375rpHt3RQ7JcLVWmRBwVeZ0iSgqX1d';
-
         fetch(apiUrl, {
             method: 'POST',
             headers: {
                 Accept: 'application/json',
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: `action=add&key=${secret_key}&params=${encodeURIComponent(base64Data)}`,
+            body: `action=add&key=${GC_SECRET_KEY}&params=${encodeURIComponent(base64Data)}`,
         })
             .then((response) => response.json())
             .then((data) => {
@@ -451,5 +510,60 @@ export class CardsService {
             .catch((error) => {
                 console.error('Error:', error);
             });
+    }
+    private async createNewOrderAndUser(dto) {
+        try {
+            const data = {
+                user: {
+                    email: dto.contact_email,
+                    phone: dto.contact_phone,
+                    first_name: dto.contact_first_name,
+                    last_name: dto.contact_last_name,
+                    addfields: { 'Чат в BeeCRM': `https://beechat.ru/apps/chat/${dto.chat_id}` },
+                },
+                system: {
+                    refresh_if_exists: 0,
+                    multiple_offers: 1,
+                    return_deal_number: 1,
+                },
+                deal: {
+                    offer_code: dto.card_deal_offers[0].id,
+                    deal_cost: dto.card_deal_offers[0].cost,
+                    /* deal_number: '29900',
+                    deal_cost: '990',
+                    deal_status: 'in_work',
+                    product_title: 'Функциональный тренинг',
+                    manager_email: null, */
+                },
+            };
+
+            const jsonData = JSON.stringify(data);
+            const base64Data = Buffer.from(jsonData).toString('base64');
+            let responce;
+
+            const apiUrl = `https://linnik-fitness1.getcourse.ru/pl/api/deals`;
+            fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `action=add&key=${GC_SECRET_KEY}&params=${encodeURIComponent(base64Data)}`,
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    console.log(data);
+                    responce = data;
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+
+            return responce;
+        } catch (error) {}
+    }
+    private convertOffersToArray(string) {
+        const arrayFromString = string.split(',');
+        return arrayFromString;
     }
 }

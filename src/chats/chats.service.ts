@@ -52,12 +52,19 @@ export class ChatsService {
                     },
                     {
                         model: this.contactsRepository, // Предположим, что у вас есть модель Contact
-                        attributes: ['contact_name', 'contact_status', 'contact_photo_url'],
+                        attributes: [
+                            'contact_name',
+                            'contact_status',
+                            'contact_photo_url',
+                            'contact_getcourse',
+                            'contact_bothelp_kn',
+                            'contact_bothelp_bs',
+                        ],
                     },
                 ],
                 order: [['updatedAt', 'DESC']],
             });
-            return chats.map((chat) => {
+            const result = chats.map((chat) => {
                 return {
                     chat_id: chat.chat_id,
                     contact_id: chat.contact_id,
@@ -74,9 +81,13 @@ export class ChatsService {
                         contact_name: chat.contact ? chat.contact.contact_name : null,
                         contact_status: chat.contact ? chat.contact.contact_status : null,
                         contact_photo_url: chat.contact ? chat.contact.contact_photo_url : null,
+                        contact_getcourse: chat.contact ? chat.contact.contact_getcourse : null,
+                        contact_bothelp_kn: chat.contact ? chat.contact.contact_bothelp_kn : null,
+                        contact_bothelp_bs: chat.contact ? chat.contact.contact_bothelp_bs : null,
                     },
                 };
             });
+            return result;
         } catch (error) {
             console.log('ошибка при загрузки части чатов', error);
         }
@@ -114,7 +125,14 @@ export class ChatsService {
                     },
                     {
                         model: this.contactsRepository, // Предположим, что у вас есть модель Contact
-                        attributes: ['contact_name', 'contact_status', 'contact_photo_url'],
+                        attributes: [
+                            'contact_name',
+                            'contact_status',
+                            'contact_photo_url',
+                            'contact_getcourse',
+                            'contact_bothelp_kn',
+                            'contact_bothelp_bs',
+                        ],
                     },
                 ],
             });
@@ -135,6 +153,9 @@ export class ChatsService {
                         contact_name: chat.contact ? chat.contact.contact_name : null,
                         contact_status: chat.contact ? chat.contact.contact_status : null,
                         contact_photo_url: chat.contact ? chat.contact.contact_photo_url : null,
+                        contact_getcourse: chat.contact ? chat.contact.contact_getcourse : null,
+                        contact_bothelp_kn: chat.contact ? chat.contact.contact_bothelp_kn : null,
+                        contact_bothelp_bs: chat.contact ? chat.contact.contact_bothelp_bs : null,
                     },
                 };
             });
