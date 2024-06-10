@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Contact } from './contacts.model';
 import { InjectModel } from '@nestjs/sequelize';
-import { CreateContactDto } from './dto/create-contact.dto';
+import { CreateContactDto, UpdateContactDto } from './dto/create-contact.dto';
 
 import { customAlphabet } from 'nanoid';
 import { Chat } from 'src/chats/chats.model';
@@ -29,8 +29,15 @@ export class ContactsService {
     }
 
     async getOneContactByEmail(email) {
-        const contacts = await this.contactRepository.findOne({ where: { contact_email: email } });
-        return contacts;
+        try {
+            const contact = await this.contactRepository.findOne({
+                where: { contact_email: email },
+            });
+            console.log('contact contact', contact);
+            return contact;
+        } catch (error) {
+            console.log('Не получилось найти контакт по Email', error);
+        }
     }
 
     async getPartContacts(limit) {
@@ -58,8 +65,38 @@ export class ContactsService {
         return contacts;
     }
 
+    async updateContact(dto: UpdateContactDto) {
+        try {
+            const [updatedRowsCount, updatedContacts] = await this.contactRepository.update(dto, {
+                where: { contact_id: dto.contact_id },
+                returning: true,
+            });
+            if (updatedRowsCount === 0) {
+                throw new NotFoundException(`Chat with id ${dto.contact_id} not found.`);
+            }
+            return updatedContacts[0];
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
     async getAllContactsDemo() {
         const contacts = await this.contactRepository.findAll();
         return contacts;
+    }
+
+    async deleteContact(id: string) {
+        try {
+            const deletedRowsCount = await this.chatRepository.destroy({
+                where: { contact_id: id },
+            });
+
+            if (deletedRowsCount === 0) {
+                throw new NotFoundException(`Contact with id ${id} not found.`);
+            }
+            return { success: true, message: `Contact with id ${id} deleted successfully.` };
+        } catch (error) {
+            console.log(error);
+        }
     }
 }

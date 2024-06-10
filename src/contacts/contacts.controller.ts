@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { ContactsService } from './contacts.service';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { CreateContactDto } from './dto/create-contact.dto';
+import { CreateContactDto, UpdateContactDto } from './dto/create-contact.dto';
 import { Contact } from './contacts.model';
 
 @Controller('contacts')
@@ -23,8 +23,24 @@ export class ContactsController {
     getAll() {
         return this.contactsService.getAllContacts();
     }
+
     @Get(':id')
     getOneContact(@Param('id') id: string) {
         return this.contactsService.getOneContact(id);
+    }
+
+    @Get('/findByEmail/:email')
+    getOneContactByEmail(@Param('email') email: string) {
+        return this.contactsService.getOneContactByEmail(email);
+    }
+
+    @Put(':id')
+    updateChat(@Body() dto: UpdateContactDto) {
+        return this.contactsService.updateContact(dto);
+    }
+
+    @Delete(':id')
+    deleteContact(@Param(':id') id: string) {
+        return this.contactsService.deleteContact(id);
     }
 }

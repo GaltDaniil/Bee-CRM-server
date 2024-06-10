@@ -1,6 +1,8 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ChatsService } from './chats.service';
 import { CreateChatDto } from './dto/create-chat.dto';
+import { filter } from 'rxjs';
+import { UpdateChatDto } from './dto/update-chat.dto';
 
 @Controller('chat')
 export class ChatsController {
@@ -12,9 +14,9 @@ export class ChatsController {
     }
 
     @Get('/part')
-    getPartChats(@Query('limit') limit: number) {
+    getPartChats(@Query('limit') limit: number, @Query('filter') filter: number) {
         console.log(limit);
-        return this.chatsService.getPartChats(limit);
+        return this.chatsService.getPartChats(limit, filter);
     }
 
     @Get('bycontact/:id')
@@ -50,10 +52,10 @@ export class ChatsController {
         return this.chatsService.createChat(dto);
     }
 
-    /* @Put(':id')
-    updateChat(@Param('id') id: string, @Body() dto: UpdateChatDto) {
-        return this.chatsService.updateChat(id, dto);
-    } */
+    @Put(':id')
+    updateChat(@Body() dto: UpdateChatDto) {
+        return this.chatsService.updateChat(dto);
+    }
 
     @Delete(':id')
     deleteChat(@Param('id') id: string) {

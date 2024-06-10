@@ -33,7 +33,7 @@ export class ChatsService {
         }
     }
 
-    async getPartChats(limit) {
+    async getPartChats(limit, filter?) {
         try {
             const chats = await this.chatRepository.findAll({
                 limit,
@@ -202,14 +202,14 @@ export class ChatsService {
         }
     }
 
-    async updateChat(id: string, dto: UpdateChatDto) {
+    async updateChat(dto: UpdateChatDto) {
         try {
             const [updatedRowsCount, updatedChats] = await this.chatRepository.update(dto, {
-                where: { chat_id: id },
+                where: { chat_id: dto.chat_id },
                 returning: true,
             });
             if (updatedRowsCount === 0) {
-                throw new NotFoundException(`Chat with id ${id} not found.`);
+                throw new NotFoundException(`Chat with id ${dto.chat_id} not found.`);
             }
             return updatedChats[0];
         } catch (error) {
