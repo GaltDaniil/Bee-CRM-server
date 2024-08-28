@@ -8,7 +8,7 @@ import { ChatsService } from 'src/chats/chats.service';
 import { TelegramService } from 'src/messengers/telegram/telegram.service';
 import { EventGateway } from 'src/event/event.gateway';
 import { Attachment } from 'src/attachments/attachments.model';
-import { tgBot, vkBot } from 'src/messengers/bots.init';
+import { tgBot, vkBot, waBot } from 'src/messengers/bots.init';
 
 const nanoid = customAlphabet('abcdef123456789', 24);
 
@@ -73,15 +73,15 @@ export class MessagesService {
             if (!dto.manager_id) {
                 this.chatsService.addUnreadCount(dto.chat_id);
                 tgBot.sendMessage(
-                    680306494,
-                    `Пришло новое сообщение в чат https://beechat.ru/apps/chat/${message.chat_id}`,
+                    360641449,
+                    `Пришло новое сообщение в чат https://beechat.ru/apps/chat/${message.chat_id} c текстом "${message.message_value}"`,
                     {
                         /* parse_mode: 'MarkdownV2', */
                         disable_web_page_preview: true,
                     },
                 );
                 tgBot.sendMessage(
-                    360641449,
+                    438284660,
                     `Пришло новое сообщение в чат https://beechat.ru/apps/chat/${message.chat_id} c текстом "${message.message_value}"`,
                     {
                         /* parse_mode: 'MarkdownV2', */
@@ -128,7 +128,15 @@ export class MessagesService {
             }
             if (messenger_type === 'instagram') {
             }
-            if (messenger_type === 'whatsapp') {
+            if (messenger_type === 'wa') {
+                waBot
+                    .sendMessage(messenger_id, message_value)
+                    .then((response) => {
+                        console.log('Message sent successfully:', response);
+                    })
+                    .catch((error) => {
+                        console.error('Error sending message:', error);
+                    });
             }
         } catch (error) {
             console.log(error);

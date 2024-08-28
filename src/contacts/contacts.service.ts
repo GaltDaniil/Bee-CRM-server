@@ -40,14 +40,23 @@ export class ContactsService {
         }
     }
 
-    async getPartContacts(limit) {
+    async getPartContacts(limit, page) {
         try {
+            const offset = (page - 1) * limit; // Рассчитываем смещение
             const contactsPart = await this.contactRepository.findAll({
                 limit,
+                offset,
                 logging: false,
                 order: [['updatedAt', 'DESC']],
             });
-            return contactsPart;
+            const totalContacts = await this.contactRepository.count();
+            const totalPages = Math.ceil(totalContacts / limit);
+
+            return {
+                contacts: contactsPart,
+                totalPages, // Общее количество страниц
+                currentPage: page, // Текущая страница
+            };
         } catch (error) {
             console.log('ошибка при загрузки части контактов', error);
         }

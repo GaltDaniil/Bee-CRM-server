@@ -9,6 +9,7 @@ import {
     StickerAttachment,
     VideoAttachment,
     VK,
+    Keyboard,
 } from 'vk-io';
 import { ChatsService } from 'src/chats/chats.service';
 import { ContactsService } from 'src/contacts/contacts.service';
@@ -24,11 +25,27 @@ import { InjectModel } from '@nestjs/sequelize';
 import { customAlphabet } from 'nanoid';
 import { AttachmentsService } from 'src/attachments/attachments.service';
 import { vkBot } from '../bots.init';
+import { autoresponder } from '../chatbot/autoresponder';
 const nanoid = customAlphabet('abcdef123456789', 24);
 
 dotenv.config();
 
 const { VK_TOKEN } = process.env;
+
+const createKeyboard = () => {
+    return Keyboard.builder()
+        .textButton({
+            label: 'Button 1',
+            payload: { command: 'button1' },
+            color: Keyboard.PRIMARY_COLOR,
+        })
+        .textButton({
+            label: 'Button 2',
+            payload: { command: 'button2' },
+            color: Keyboard.SECONDARY_COLOR,
+        })
+        .inline();
+};
 
 @Injectable()
 export class VkService {
@@ -50,43 +67,16 @@ export class VkService {
         });
 
         this.VKBot.updates.on('message_new', this.messageHandler);
-        this.VKBot.updates.on('message', async (context) => {
-            try {
-                console.log('от группы или админа', context);
-                /* if (context.isGroup == true) return; */
-                let contact_id;
-                const messenger_id = context.peerId.toString();
-                const manager_id = context.senderId.toString();
-                const messenger_type = 'vk';
-                const text = context.text === undefined ? ' ' : context.text;
-                const chat = await this.chatsService.getChatByMessengerId(messenger_id);
-
-                //Нужна логика которая будет определять тип сообщения, скрин,аудио или файл
-
-                const params = {
-                    message_value: context.text === undefined ? ' ' : context.text,
-                    message_type: 'text',
-                    messenger_type: 'vk',
-                    manager_id,
-                    contact_id: chat.contact_id,
-                    chat_id: chat.chat_id,
-                };
-                this.sendMessageFromVk(params, context.attachments);
-            } catch (error) {
-                console.log('какой-та ошибк', error);
-            }
-        });
         this.VKBot.updates.start().catch(console.error);
     }
 
     messageHandler = async (context) => {
-        console.log('от пользователя', context);
+        const command = context.text.toLowerCase();
+
         if (context.text !== undefined) {
             if (context.text.length < 2) return;
             if (context.text === 'начать' || context.text === 'Начать') return;
-            console.log('undefind прошло начальные проверки');
         }
-        console.log('и перешло дальше');
         const messenger_id = context.senderId.toString();
         let chat_id: string;
         let contact_id: string;
@@ -103,7 +93,7 @@ export class VkService {
                 account_id = parsedParams.account_id || 'ecfafe4bc756935e17d93bec';
                 from_url = parsedParams.from_url || '';
             }
-
+            console.log('context.senderId', context.senderId);
             const vkData = await this.VKBot.api.users.get({
                 user_ids: [context.senderId],
                 fields: ['photo_200_orig', 'nickname'],
@@ -126,6 +116,7 @@ export class VkService {
                 account_id,
                 contact_name,
                 contact_photo_url,
+                contact_vk_status: true,
             };
             const newContact: Contact = await this.contactsService.createContact(params);
 
@@ -156,13 +147,16 @@ export class VkService {
             chat_id,
         };
 
-        this.sendMessageFromVk(params, context.attachments);
+        const message = await this.sendMessageFromVk(params, context.attachments);
+        const answerText = autoresponder(message.createdAt);
+        if (answerText) {
+            await this.messagesService.createMessage({ ...params, message_value: answerText });
+        }
     };
 
     sendMessageFromVk = async (params, attachments?) => {
         const message = await this.messagesService.createMessage(params);
 
-        console.log('context.attachment', attachments);
         if (attachments) {
             this.chechAttachments(attachments, message.chat_id, message.message_id);
         }

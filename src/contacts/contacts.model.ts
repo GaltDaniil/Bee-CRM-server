@@ -30,6 +30,18 @@ export class Contact extends Model<Contact, ContactCreationAttrs> {
     @Column({ type: DataType.STRING, allowNull: true })
     contact_phone: string;
 
+    @Column({ type: DataType.BOOLEAN, allowNull: true })
+    contact_wa_status: boolean;
+
+    @Column({ type: DataType.BOOLEAN, allowNull: true })
+    contact_tg_status: boolean;
+
+    @Column({ type: DataType.BOOLEAN, allowNull: true })
+    contact_vk_status: boolean;
+
+    @Column({ type: DataType.BOOLEAN, allowNull: true })
+    contact_ig_status: boolean;
+
     @Column({ type: DataType.STRING, allowNull: true })
     contact_about: string;
 

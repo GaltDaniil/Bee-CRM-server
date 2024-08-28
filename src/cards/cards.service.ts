@@ -105,46 +105,47 @@ export class CardsService {
     }
 
     async createCard(dto: CreateCardFromBeeDto) {
-        let contact_id;
-
-        //Проверяем наличие контакта
-        const contact = await this.contactRepository.findOne({
-            where: {
-                contact_email: dto.contact_email,
-            },
-            include: [{ model: Card }],
-        });
-
-        if (!contact) {
-            // если нет контакта с таким мылом - мы просто обновляем старый контакт.
-            let contactName = dto.contact_first_name;
-            if (dto.contact_last_name) {
-                contactName = contactName + ' ' + dto.contact_last_name;
-            }
-
-            await this.contactRepository.update(
-                {
-                    contact_name: contactName,
-                    contact_email: dto.contact_email,
-                    contact_phone: dto.contact_phone,
-                },
-                { where: { contact_id: dto.contact_id } },
-            );
-            contact_id = dto.contact_id;
+        let response;
+        if (dto.alredyBind) {
+            response = await this.createNewOrderAndUser(dto);
         } else {
-            contact_id = contact.contact_id;
-            await this.chatRepository.update(
-                { contact_id: contact.contact_id },
-                {
-                    where: {
-                        chat_id: dto.chat_id,
-                    },
+            const contact = await this.contactRepository.findOne({
+                where: {
+                    contact_email: dto.contact_email,
                 },
-            );
-            await this.contactRepository.destroy({ where: { contact_id: dto.contact_id } });
+                include: [{ model: Card }],
+            });
+
+            if (!contact) {
+                // если нет контакта с таким мылом - мы просто обновляем старый контакт.
+                let contactName = dto.contact_first_name;
+                if (dto.contact_last_name) {
+                    contactName = contactName + ' ' + dto.contact_last_name;
+                }
+
+                await this.contactRepository.update(
+                    {
+                        contact_name: contactName,
+                        contact_email: dto.contact_email,
+                        contact_phone: dto.contact_phone,
+                    },
+                    { where: { contact_id: dto.contact_id } },
+                );
+            } else {
+                await this.chatRepository.update(
+                    { contact_id: contact.contact_id },
+                    {
+                        where: {
+                            chat_id: dto.chat_id,
+                        },
+                    },
+                );
+                await this.contactRepository.destroy({ where: { contact_id: dto.contact_id } });
+            }
+            response = await this.createNewOrderAndUser(dto);
         }
-        const responce = await this.createNewOrderAndUser(dto);
-        console.log('responce после создания в GC', responce);
+        console.log('responce после создания в GC', response);
+        return response;
         /* if(responce.data.success){
             const card = await this.cardRepository.create();
         }else {
@@ -166,6 +167,9 @@ export class CardsService {
                     { model: Comment },
                     {
                         model: Contact,
+                        attributes: {
+                            exclude: ['updatedAt'],
+                        },
                         /* attributes: ['contact_name', 'contact_email', 'contact_phone'], */
                     },
                 ],
@@ -203,6 +207,9 @@ export class CardsService {
                     { model: Comment },
                     {
                         model: Contact,
+                        attributes: {
+                            exclude: ['updatedAt'],
+                        },
                         /* attributes: ['contact_name', 'contact_email', 'contact_phone'], */
                     },
                 ],
@@ -236,6 +243,10 @@ export class CardsService {
                     { model: Comment },
                     {
                         model: Contact,
+                        attributes: {
+                            exclude: ['updatedAt'],
+                        },
+
                         /* attributes: ['contact_name', 'contact_email', 'contact_phone'], */
                     },
                 ],
@@ -243,7 +254,7 @@ export class CardsService {
 
             if (dto.memberIds) {
                 const contact = await this.contactRepository.findByPk(updatedCards[0].contact_id);
-                this.changeStatusInGc(updatedCard, contact);
+                //this.changeStatusInGc(updatedCard, contact);
             }
             this.EventGateway.ioServer.emit('updateBoard');
 
@@ -287,13 +298,16 @@ export class CardsService {
                     { model: Attachment },
                     {
                         model: Contact,
+                        attributes: {
+                            exclude: ['updatedAt'],
+                        },
                         /* attributes: ['contact_name', 'contact_email', 'contact_phone'], */
                     },
                 ],
             });
             this.EventGateway.ioServer.emit('updateBoard');
 
-            this.changeStatusInGc(updatedCard, contact);
+            //this.changeStatusInGc(updatedCard, contact);
 
             return updatedCards;
         } catch (error) {
@@ -513,54 +527,69 @@ export class CardsService {
     }
     private async createNewOrderAndUser(dto) {
         try {
-            const data = {
-                user: {
-                    email: dto.contact_email,
-                    phone: dto.contact_phone,
-                    first_name: dto.contact_first_name,
-                    last_name: dto.contact_last_name,
-                    addfields: { 'Чат в BeeCRM': `https://beechat.ru/apps/chat/${dto.chat_id}` },
-                },
-                system: {
-                    refresh_if_exists: 0,
-                    multiple_offers: 1,
-                    return_deal_number: 1,
-                },
-                deal: {
-                    offer_code: dto.card_deal_offers[0].id,
-                    deal_cost: dto.card_deal_offers[0].cost,
-                    /* deal_number: '29900',
-                    deal_cost: '990',
-                    deal_status: 'in_work',
-                    product_title: 'Функциональный тренинг',
-                    manager_email: null, */
-                },
-            };
+            const baseUrl = `https://linnik-fitness1.getcourse.ru/pl/api/deals`;
+            let dealNumber = null;
+            let dealData = null;
 
-            const jsonData = JSON.stringify(data);
-            const base64Data = Buffer.from(jsonData).toString('base64');
-            let responce;
+            for (const offer of dto.card_deal_offers) {
+                const data = {
+                    user: {
+                        email: dto.contact_email,
+                        phone: dto.contact_phone,
+                        first_name: dto.contact_first_name,
+                        last_name: dto.contact_last_name,
+                        addfields: {
+                            'Чат в BeeCRM': `https://beechat.ru/apps/chat/${dto.chat_id}`,
+                        },
+                    },
+                    system: {
+                        refresh_if_exists: 1,
+                        multiple_offers: 1,
+                        return_deal_number: 1,
+                    },
+                    deal: {
+                        offer_code: offer.id,
+                        deal_cost: offer.cost,
+                        manager_email: dto.manager_email,
+                        deal_number: dealNumber, // Используем dealNumber, если он есть
+                    },
+                };
 
-            const apiUrl = `https://linnik-fitness1.getcourse.ru/pl/api/deals`;
-            fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `action=add&key=${GC_SECRET_KEY}&params=${encodeURIComponent(base64Data)}`,
-            })
-                .then((response) => response.json())
-                .then((data) => {
-                    console.log(data);
-                    responce = data;
-                })
-                .catch((error) => {
-                    console.error('Error:', error);
+                const jsonData = JSON.stringify(data);
+                const base64Data = Buffer.from(jsonData).toString('base64');
+                const apiUrl = `${baseUrl}?action=add&key=${GC_SECRET_KEY}&params=${encodeURIComponent(
+                    base64Data,
+                )}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `action=add&key=${GC_SECRET_KEY}&params=${encodeURIComponent(
+                        base64Data,
+                    )}`,
                 });
 
-            return responce;
-        } catch (error) {}
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const responseData = await response.json();
+                console.log(responseData);
+                dealData = responseData;
+
+                if (responseData.success && responseData.deal && responseData.deal.deal_number) {
+                    dealNumber = responseData.deal.deal_number;
+                } else {
+                    throw new Error('Deal creation failed or deal_number not returned');
+                }
+            }
+            return dealData;
+        } catch (error) {
+            console.error('Error:', error);
+        }
     }
     private convertOffersToArray(string) {
         const arrayFromString = string.split(',');

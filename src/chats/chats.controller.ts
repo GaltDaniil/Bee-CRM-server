@@ -18,6 +18,11 @@ export class ChatsController {
         console.log(limit);
         return this.chatsService.getPartChats(limit, filter);
     }
+    @Get('/parttest')
+    getPartChatsTest(@Query('limit') limit: number, @Query('filter') filter: number) {
+        console.log(limit);
+        return this.chatsService.getPartChatsTest(limit, filter);
+    }
 
     @Get('bycontact/:id')
     getChatByContactId(@Param('id') id: string) {
@@ -50,6 +55,10 @@ export class ChatsController {
     @Post()
     createChat(@Body() dto: CreateChatDto) {
         return this.chatsService.createChat(dto);
+    }
+    @Post()
+    createChatByContact(@Body() dto: CreateChatDto) {
+        return this.chatsService.createChatByContact(dto);
     }
 
     @Put(':id')

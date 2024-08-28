@@ -15,6 +15,7 @@ import { EventGateway } from 'src/event/event.gateway';
 import { tgBot } from '../bots.init';
 import { AttachmentsService } from 'src/attachments/attachments.service';
 import { MessagesService } from 'src/messages/messages.service';
+import { autoresponder } from '../chatbot/autoresponder';
 const nanoid = customAlphabet('abcdef123456789', 24);
 
 dotenv.config();
@@ -54,15 +55,10 @@ export class TelegramService {
             let contact_id: string;
             let from_url = '';
             let contact_photo_url: string = '';
-            console.log('match', match);
-            console.log(match!.length);
 
             if (match!.length > 1) {
-                console.log('match!.length > 4');
                 const paramsString = match![1].trim();
-                console.log('paramsString', paramsString);
                 const parsedParams = urlParser(paramsString);
-                console.log('parsedParams', parsedParams);
                 account_id = parsedParams.account_id || 'ecfafe4bc756935e17d93bec';
                 from_url = parsedParams.from_url!;
             }
@@ -70,9 +66,6 @@ export class TelegramService {
             const isChat = await this.chatsService.getChatByMessengerId(messenger_id);
 
             if (!isChat) {
-                console.log('создание контакта из startCommand');
-                // нужно создать контакт и потом чат.
-                //Получится дублеж .будут двойные контакты. Но пока пофиг
                 const contact_name: string = msg.chat.first_name || '';
                 const messenger_username: string = msg.from?.username || '';
 
@@ -90,6 +83,7 @@ export class TelegramService {
                     account_id,
                     contact_name,
                     contact_photo_url,
+                    contact_tg_status: true,
                 };
                 const newContact: Contact = await this.contactsService.createContact(params);
 
@@ -129,6 +123,8 @@ export class TelegramService {
         let chat_id: string;
         let contact_photo_url: string;
         let message_value = msg.text ? msg.text : '';
+        let message;
+        let params;
 
         const isChat = await this.chatsService.getChatByMessengerId(messenger_id);
 
@@ -147,6 +143,7 @@ export class TelegramService {
                 account_id,
                 contact_name,
                 contact_photo_url,
+                contact_tg_status: true,
             };
             const newContact: Contact = await this.contactsService.createContact(params);
 
@@ -168,7 +165,7 @@ export class TelegramService {
             const imageBuffer = Buffer.from(response.data, 'binary');
             const fileExtension = photoUrl.split('.').pop();
 
-            const params = {
+            params = {
                 message_value: msg.caption ? msg.caption : ' ',
                 message_type: 'text',
                 messenger_type: 'telegram',
@@ -176,9 +173,9 @@ export class TelegramService {
                 contact_id,
                 chat_id,
             };
-            this.sendMessageFromTelegram(params, imageBuffer, fileExtension);
+            message = await this.sendMessageFromTelegram(params, imageBuffer, fileExtension);
         } else {
-            const params = {
+            params = {
                 message_value,
                 message_type: 'text',
                 messenger_type: 'telegram',
@@ -186,7 +183,13 @@ export class TelegramService {
                 contact_id,
                 chat_id,
             };
-            this.sendMessageFromTelegram(params);
+            message = await this.sendMessageFromTelegram(params);
+        }
+        if (message) {
+            const answerText = autoresponder(message.createdAt);
+            if (answerText) {
+                await this.messagesService.createMessage({ ...params, message_value: answerText });
+            }
         }
     };
 

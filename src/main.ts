@@ -6,6 +6,7 @@ import { TelegramService } from './messengers/telegram/telegram.service';
 import { VkService } from './messengers/vk/vk.service';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { SocketAdapter } from './event/event.adapter';
+import { WaService } from './messengers/wa/wa.service';
 
 async function bootstrap() {
     const PORT = process.env.PORT || 5000;
@@ -21,8 +22,10 @@ async function bootstrap() {
 
     const telegramService = app.get(TelegramService);
     const vkService = app.get(VkService);
+    const waService = app.get(WaService);
     telegramService.init();
     vkService.init();
+    waService.init();
 
     app.useWebSocketAdapter(new SocketAdapter(app));
 

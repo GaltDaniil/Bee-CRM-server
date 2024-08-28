@@ -36,6 +36,7 @@ export class CreateCardFromBeeDto {
     contact_first_name: string;
     contact_last_name: string;
     contact_phone: string;
+    alredyBind: boolean;
 }
 
 export class UpdateCardDto {

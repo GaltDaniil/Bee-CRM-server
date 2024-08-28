@@ -31,6 +31,7 @@ import { Attachment } from './attachments/attachments.model';
 import { List } from './lists/lists.model';
 import { Board } from './boards/boards.model';
 import { Comment } from './comments/comments.model';
+import { WaModule } from './messengers/wa/wa.module';
 
 @Module({
     imports: [

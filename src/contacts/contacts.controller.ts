@@ -14,9 +14,9 @@ export class ContactsController {
     }
 
     @Get('/part')
-    getPartChats(@Query('limit') limit: number) {
+    getPartChats(@Query('limit') limit: number, @Query('page') page: number) {
         console.log(limit);
-        return this.contactsService.getPartContacts(limit);
+        return this.contactsService.getPartContacts(limit, page);
     }
 
     @Get()
