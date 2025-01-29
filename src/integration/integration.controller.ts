@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpException, HttpStatus, Post, Query } from '@nestjs/common';
 import { IntegrationService } from './integration.service';
 import * as crypto from 'crypto';
 import * as querystring from 'querystring';
@@ -40,58 +40,7 @@ interface QueryParams {
 export class IntegrationController {
     constructor(private integrationService: IntegrationService) {}
 
-    @Post('bothelp/nutri')
-    createNutriLead(@Body() body) {
-        return this.integrationService.createLeadFromKN(body);
-    }
-
-    @Post('bothelp/start')
-    createStartLead(@Body() body) {
-        return this.integrationService.createLeadFromBS(body);
-    }
-
-    @Get('/getcourse/order/new')
-    getcourseNewOrder(
-        @Query()
-        query: QueryParams,
-    ) {
-        console.log(query);
-        return this.integrationService.getcourseNewOrder(query);
-    }
-
-    @Get('/getcourse/order/status')
-    getcourseStatusOrder(
-        @Query()
-        query: {
-            card_deal_num: string;
-            card_deal_status: string;
-            card_deal_price: string;
-            card_deal_left_cost: string;
-            card_deal_payed_money: string;
-        },
-    ) {
-        console.log('Новый статус в Getcourse');
-        return this.integrationService.getcourseStatusOrder(query);
-    }
-
-    @Get('/getcourse/order/check')
-    getcourseCheckOrder(
-        @Query()
-        query: QueryParams,
-    ) {
-        console.log(query);
-        //return this.integrationService.getcoursePaidOrder(query);
-    }
-
-    @Get('/getcourse/offers')
-    getcourseOffers() {
-        return this.integrationService.offersList();
-    }
-
-    @Get('/getcourse/bothelp')
-    getCourse(@Query() query: { phone: string; email: string }) {
-        return this.integrationService.checkUserFromBh(query);
-    }
+    // Интеграция с НОВОФОН
 
     @Get('/novofon')
     getNovofon(@Query() query) {
@@ -134,4 +83,6 @@ export class IntegrationController {
         };
         return callback(query);
     }
+    @Get('/valuta')
+    getExchangeRate(@Query() query) {}
 }

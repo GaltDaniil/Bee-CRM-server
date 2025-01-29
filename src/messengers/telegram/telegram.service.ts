@@ -185,12 +185,12 @@ export class TelegramService {
             };
             message = await this.sendMessageFromTelegram(params);
         }
-        if (message) {
+        /* if (message) {
             const answerText = autoresponder(message.createdAt);
             if (answerText) {
                 await this.messagesService.createMessage({ ...params, message_value: answerText });
             }
-        }
+        } */
     };
 
     getTelegramAvatarFile = async (messenger_id: string) => {
@@ -205,7 +205,9 @@ export class TelegramService {
             const photoUrl = await this.telegramBot.getFileLink(photo.file_id);
 
             const response = await axios.get(photoUrl, { responseType: 'arraybuffer' });
+            console.log('response.data from TG', response.data);
             const imageBuffer = Buffer.from(response.data, 'binary');
+            console.log('imageBuffer from TG', imageBuffer);
             return imageBuffer;
         }
         return '';

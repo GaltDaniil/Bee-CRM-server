@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { AttachmentsService } from 'src/attachments/attachments.service';
 import { ChatsService } from 'src/chats/chats.service';
 import { ContactsService } from 'src/contacts/contacts.service';
 import { EventGateway } from 'src/event/event.gateway';
@@ -11,6 +10,11 @@ import * as qrcode from 'qrcode-terminal';
 import { Client, Message } from 'whatsapp-web.js';
 import axios from 'axios';
 import { autoresponder } from '../chatbot/autoresponder';
+import { WaFromGetcourse } from './dto/wa-from-getcourse.dto';
+import { GetcourseService } from 'src/integration/getcourse/getcourse.service';
+import { AttachmentsService } from 'src/attachments/attachments.service';
+import { customAlphabet } from 'nanoid';
+const nanoid = customAlphabet('abcdef123456789', 24);
 
 @Injectable()
 export class WaService {
@@ -19,8 +23,9 @@ export class WaService {
         private messagesService: MessagesService,
         private chatsService: ChatsService,
         private filesService: FilesService,
-        private attachmentsService: AttachmentsService,
         private eventGateway: EventGateway,
+        private getcourseService: GetcourseService,
+        private attachmentsService: AttachmentsService,
     ) {}
     whatsappBot: Client;
 
@@ -35,16 +40,16 @@ export class WaService {
         });
 
         this.whatsappBot.on('message_create', async (msg: Message) => {
+            console.log(msg);
             if (msg.from === '79964390394@c.us') {
                 return;
             }
             if (msg.body !== undefined) {
-                if (msg.body.length < 2) {
+                if (msg.body.length < 2 && msg.hasMedia === false) {
                     return;
                 }
             }
             const contact = await msg.getContact();
-            console.log('contact', contact);
             //const profilePicUrl = await contact.getProfilePicUrl();
 
             let chat_id: string;
@@ -94,7 +99,8 @@ export class WaService {
                 contact_id = isChat.contact_id;
                 chat_id = isChat.chat_id;
             }
-            //если есть просто добавляем сообщения в него.
+            // ЗДЕСЬ НУЖНО ПРОВЕРИТЬ НА НАЛИЧИЕ ИЗОБРАЖЕНИЯ
+
             const params = {
                 message_value,
                 message_type: 'text',
@@ -106,10 +112,11 @@ export class WaService {
 
             const message = await this.sendMessageFromWa(params);
 
-            const answerText = autoresponder(message.createdAt);
+            /* const answerText = autoresponder(message.createdAt);
             if (answerText) {
                 await this.messagesService.createMessage({ ...params, message_value: answerText });
-            }
+            } */
+            await this.checkImageAttachment(msg, message.message_id);
         });
         this.whatsappBot.initialize();
     }
@@ -118,8 +125,30 @@ export class WaService {
         this.eventGateway.ioServer.emit('update', message);
         return message;
     };
+
+    checkImageAttachment = async (msg: Message, message_id: string) => {
+        if (msg.hasMedia) {
+            const media = await msg.downloadMedia();
+            console.log('media', media);
+            const mediaExtension = media.mimetype.split('/')[1]; // Получаем расширение файла
+            const fileBuffer = Buffer.from(media.data, 'base64');
+
+            const savedFile = await this.filesService.saveChatImage(fileBuffer, mediaExtension);
+            const fileName = media.filename ? media.filename : nanoid();
+
+            const attachmentParams = {
+                message_id,
+                attachment_name: fileName,
+                attachment_url: `assets/images/chats/${savedFile.fileName}`,
+                attachment_type: media.mimetype.startsWith('image') ? 'image' : 'file',
+                attachment_src: `https://beechat.ru/assets/images/chats/${savedFile.fileName}`,
+                attachment_market: {}, // если нужен маркетинговый параметр
+            };
+
+            await this.attachmentsService.createAttachment(attachmentParams, savedFile.filePath);
+        }
+    };
     checkWaNumber = async (contact_phone, contact_id) => {
-        console.log('contact_phone', contact_phone);
         const convertedNumber = this.formatPhoneNumber(contact_phone);
 
         try {
@@ -156,6 +185,90 @@ export class WaService {
             console.error(`Ошибка при проверке номера ${convertedNumber}:`, error);
         }
     };
+
+    checkNumber = async (contact_phone) => {
+        console.log('contact_phone', contact_phone);
+        const convertedNumber = this.formatPhoneNumber(contact_phone);
+        console.log('convertedNumber', convertedNumber);
+
+        try {
+            const chatId = `${convertedNumber}@c.us`; // Форматируем номер в нужный формат
+            console.log('chatId', chatId);
+            const isRegistered = await this.whatsappBot.isRegisteredUser(chatId);
+            console.log('isRegistered', isRegistered);
+
+            if (isRegistered) {
+                console.log(`номер ${contact_phone} зарегистрирован в WhatsApp `);
+                return { status: true, messenger_id: chatId };
+            } else {
+                console.log(`Номер ${contact_phone} не зарегистрирован в WhatsApp`);
+
+                return { status: false, messenger_id: '' };
+            }
+        } catch (error) {
+            console.error(`Ошибка при проверке номера ${convertedNumber}:`, error);
+        }
+    };
+
+    newMessageFromGetcourse = async (dto: WaFromGetcourse) => {
+        try {
+            // Проверяем наличие контакта
+            let contact = await this.contactsService.getOneContactByEmail(dto.contact_email);
+
+            // Если контакт отсутствует, создаем его
+            if (!contact) {
+                const contactParams = {
+                    contact_name: dto.contact_name,
+                    contact_photo_url: '',
+                    contact_phone: dto.contact_phone,
+                    contact_email: dto.contact_email,
+                    account_id: '',
+                };
+                contact = await this.contactsService.createContact(contactParams);
+
+                if (!contact) {
+                    console.log('Контакт не создался');
+                    return;
+                }
+            }
+
+            // Находим существующий чат или создаем новый
+            let chat;
+            if (contact.chats) {
+                chat = contact.chats.find((chat) => chat.messenger_id === dto.messenger_id);
+            }
+
+            if (!chat) {
+                const chatParams = {
+                    contact_id: contact.contact_id,
+                    messenger_id: dto.messenger_id,
+                    messenger_type: dto.messenger_type,
+                };
+                chat = await this.chatsService.createChatByContact(chatParams);
+
+                if (!chat) {
+                    console.log('Чат не создался');
+                    return;
+                }
+            }
+
+            // Отправляем сообщение
+            const messageParams = {
+                chat_id: chat.chat_id,
+                message_value: dto.message_value,
+                message_type: dto.message_type,
+                messenger_type: dto.messenger_type,
+                messenger_id: dto.messenger_id,
+                contact_id: contact.contact_id,
+                manager_id: dto.manager_id,
+            };
+            await this.sendMessageFromWa(messageParams);
+            await this.getcourseService.updateGetcourseUserByEmail(dto.contact_email, chat.chat_id);
+        } catch (error) {
+            console.log(error);
+        }
+    };
+
     formatPhoneNumber(phoneNumber: string): string {
         // Удаление всех пробелов из номера телефона
         phoneNumber = phoneNumber.replace(/\s/g, '');
@@ -168,10 +281,6 @@ export class WaService {
         // Проверка и добавление кода страны +7, если его нет
         if (phoneNumber.startsWith('8')) {
             phoneNumber = `7${phoneNumber.slice(1)}`;
-        } else if (phoneNumber.startsWith('7')) {
-            phoneNumber = phoneNumber;
-        } else {
-            phoneNumber = `7${phoneNumber}`;
         }
 
         return phoneNumber;

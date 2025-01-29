@@ -55,7 +55,6 @@ export class FilesService {
 
     async saveChatImage(file, fileExtension) {
         try {
-            console.log(file);
             // Генерируем уникальное имя файла с использованием nanoid
             const fileName = nanoid() + '.' + fileExtension;
             // Путь к папке для сохранения изображений

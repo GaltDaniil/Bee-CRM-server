@@ -6,6 +6,7 @@ import { CreateContactDto, UpdateContactDto } from './dto/create-contact.dto';
 import { customAlphabet } from 'nanoid';
 import { Chat } from 'src/chats/chats.model';
 import { Card } from 'src/cards/cards.model';
+import { Op } from 'sequelize';
 
 const nanoid = customAlphabet('abcdef123456789', 24);
 
@@ -32,6 +33,7 @@ export class ContactsService {
         try {
             const contact = await this.contactRepository.findOne({
                 where: { contact_email: email },
+                include: [{ model: Chat }],
             });
             console.log('contact contact', contact);
             return contact;
@@ -39,24 +41,64 @@ export class ContactsService {
             console.log('Не получилось найти контакт по Email', error);
         }
     }
+    async searchContacts(type, value) {
+        try {
+            console.log('type', type, 'value', value);
+            let contact;
+            if (type === 'email') {
+                contact = await this.contactRepository.findAll({
+                    where: { contact_email: value },
+                });
+            } else if (type === 'name') {
+                contact = await this.contactRepository.findAll({
+                    where: {
+                        contact_name: {
+                            [Op.like]: `%${value}%`,
+                        },
+                    },
+                });
+            } else if (type === 'phone') {
+                contact = await this.contactRepository.findAll({
+                    where: {
+                        contact_phone: {
+                            [Op.like]: `%${value}%`,
+                        },
+                    },
+                });
+            }
+            console.log('searchData', contact);
+            return contact;
+        } catch (error) {
+            console.log('Не получилось найти контакт по ', type, error);
+        }
+    }
 
     async getPartContacts(limit, page) {
         try {
-            const offset = (page - 1) * limit; // Рассчитываем смещение
-            const contactsPart = await this.contactRepository.findAll({
-                limit,
-                offset,
-                logging: false,
-                order: [['updatedAt', 'DESC']],
-            });
-            const totalContacts = await this.contactRepository.count();
-            const totalPages = Math.ceil(totalContacts / limit);
+            if (page) {
+                const offset = (page - 1) * limit; // Рассчитываем смещение
+                const contactsPart = await this.contactRepository.findAll({
+                    limit,
+                    offset,
+                    logging: false,
+                    order: [['updatedAt', 'DESC']],
+                });
+                const totalContacts = await this.contactRepository.count();
+                const totalPages = Math.ceil(totalContacts / limit);
 
-            return {
-                contacts: contactsPart,
-                totalPages, // Общее количество страниц
-                currentPage: page, // Текущая страница
-            };
+                return {
+                    contacts: contactsPart,
+                    totalPages, // Общее количество страниц
+                    currentPage: page, // Текущая страница
+                };
+            } else {
+                const contactsPart = await this.contactRepository.findAll({
+                    limit,
+                    order: [['updatedAt', 'DESC']],
+                });
+
+                return contactsPart;
+            }
         } catch (error) {
             console.log('ошибка при загрузки части контактов', error);
         }

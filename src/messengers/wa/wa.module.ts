@@ -7,6 +7,7 @@ import { EventModule } from 'src/event/event.module';
 import { AttachmentsModule } from 'src/attachments/attachments.module';
 import { MessagesModule } from 'src/messages/messages.module';
 import { WaController } from './wa.controller';
+import { GetcourseModule } from 'src/integration/getcourse/getcourse.module';
 
 @Module({
     exports: [WaService],
@@ -19,6 +20,7 @@ import { WaController } from './wa.controller';
         EventModule,
         AttachmentsModule,
         MessagesModule,
+        GetcourseModule,
     ],
 })
 export class WaModule {}

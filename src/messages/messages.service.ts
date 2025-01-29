@@ -72,6 +72,7 @@ export class MessagesService {
             const message = await this.messageRepository.create(dto);
             if (!dto.manager_id) {
                 this.chatsService.addUnreadCount(dto.chat_id);
+                // Лиля
                 tgBot.sendMessage(
                     360641449,
                     `Пришло новое сообщение в чат https://beechat.ru/apps/chat/${message.chat_id} c текстом "${message.message_value}"`,
@@ -80,8 +81,9 @@ export class MessagesService {
                         disable_web_page_preview: true,
                     },
                 );
+                // Яна
                 tgBot.sendMessage(
-                    438284660,
+                    1037441383,
                     `Пришло новое сообщение в чат https://beechat.ru/apps/chat/${message.chat_id} c текстом "${message.message_value}"`,
                     {
                         /* parse_mode: 'MarkdownV2', */

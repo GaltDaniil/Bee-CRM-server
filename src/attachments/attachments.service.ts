@@ -9,6 +9,7 @@ import * as fs from 'fs';
 @Injectable()
 export class AttachmentsService {
     constructor(@InjectModel(Attachment) private attachmentRepository: typeof Attachment) {}
+
     async createAttachment(dto: CreateAttachmentDto, filePath) {
         try {
             dto.attachment_id = nanoid();

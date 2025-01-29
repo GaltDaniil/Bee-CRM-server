@@ -149,9 +149,9 @@ export class VkService {
 
         const message = await this.sendMessageFromVk(params, context.attachments);
         const answerText = autoresponder(message.createdAt);
-        if (answerText) {
+        /* if (answerText) {
             await this.messagesService.createMessage({ ...params, message_value: answerText });
-        }
+        } */
     };
 
     sendMessageFromVk = async (params, attachments?) => {

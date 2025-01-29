@@ -13,6 +13,11 @@ export class ChatsController {
         return this.chatsService.getAllChats();
     }
 
+    @Get('unreadcount')
+    unreadCount() {
+        return this.chatsService.unreadCount();
+    }
+
     @Get('/part')
     getPartChats(@Query('limit') limit: number, @Query('filter') filter: number) {
         console.log(limit);

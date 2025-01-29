@@ -26,8 +26,8 @@ export class ListsController {
         return this.listsService.updateList(id, dto);
     }
 
-    @Delete(':id')
-    deleteBoard(@Param('id') id: string) {
-        return this.listsService.deleteList(id);
+    @Delete(':board_id/lists/:list_id')
+    deleteBoard(@Param('board_id') board_id: string, @Param('list_id') list_id: string) {
+        return this.listsService.deleteList(list_id);
     }
 }

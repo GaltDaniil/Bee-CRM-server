@@ -378,6 +378,26 @@ export class ChatsService {
         }
     }
 
+    async unreadCount() {
+        try {
+            // Поиск всех чатов, где unread_count больше 0
+            const chats = await this.chatRepository.findAll({
+                where: {
+                    unread_count: {
+                        [Op.gt]: 0, // Используем оператор "больше" для поиска значений больше 0
+                    },
+                },
+            });
+
+            // Возвращаем найденные чаты
+            return chats.length;
+        } catch (error) {
+            // Обработка ошибок
+            console.error('Ошибка при поиске чатов с непрочитанными сообщениями:', error);
+            throw error; // Пробрасываем ошибку выше
+        }
+    }
+
     async readAllMessages(chat_id: string) {
         try {
             const chat = await this.chatRepository.update(

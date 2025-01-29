@@ -19,6 +19,12 @@ export class ContactsController {
         return this.contactsService.getPartContacts(limit, page);
     }
 
+    @Get('/search')
+    getSearchContacts(@Query('type') type: string, @Query('value') value: string) {
+        console.log('contrType', type, 'contrValue', value);
+        return this.contactsService.searchContacts(type, value);
+    }
+
     @Get()
     getAll() {
         return this.contactsService.getAllContacts();

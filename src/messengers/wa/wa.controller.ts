@@ -8,4 +8,13 @@ export class WaController {
     check(@Query() query: { contact_phone: string; contact_id: string }) {
         return this.WaService.checkWaNumber(query.contact_phone, query.contact_id);
     }
+    @Get('/checknumber')
+    checkNumber(@Query() data) {
+        console.log('asd', data);
+        return this.WaService.checkNumber(data.phone);
+    }
+    @Post('/fromgetcourse')
+    newMessageFromGetcourse(@Body() data) {
+        return this.WaService.newMessageFromGetcourse(data);
+    }
 }

@@ -48,6 +48,9 @@ export class Contact extends Model<Contact, ContactCreationAttrs> {
     @Column({ type: DataType.STRING, allowNull: true })
     contact_address: string;
 
+    @Column({ type: DataType.STRING, allowNull: true })
+    contact_getcourse_link: string;
+
     @Column({ type: DataType.BOOLEAN, allowNull: true, defaultValue: false })
     contact_getcourse: boolean;
 
