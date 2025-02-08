@@ -7,7 +7,7 @@ import { FilesModule } from 'src/files/files.module';
 
 @Module({
     controllers: [AttachmentsController],
-    imports: [SequelizeModule.forFeature([Attachment]), FilesModule],
+    imports: [SequelizeModule.forFeature([Attachment])],
     providers: [AttachmentsService],
     exports: [AttachmentsService],
 })

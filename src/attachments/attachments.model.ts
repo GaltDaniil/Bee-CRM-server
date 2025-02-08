@@ -60,12 +60,15 @@ export class Attachment extends Model<Attachment, AttachmentCreationAttrs> {
     @Column({ type: DataType.JSONB, allowNull: true })
     attachment_market: object;
 
+    @Column({ type: DataType.STRING, allowNull: true, defaultValue: 'pending' }) // Статус загрузки файла
+    status: string; // 'success', 'failed', 'pending'
+
     @BelongsTo(() => Card)
     card: Card;
 
     @BelongsTo(() => Chat)
     chat: Chat;
 
-    @BelongsTo(() => Message)
+    @BelongsTo(() => Message, { onDelete: 'CASCADE' }) // При удалении сообщения удаляются все вложения
     message: Message;
 }

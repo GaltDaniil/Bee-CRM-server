@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { WaService } from './wa.service';
 import { ChatsModule } from 'src/chats/chats.module';
 import { ContactsModule } from 'src/contacts/contacts.module';
@@ -19,7 +19,7 @@ import { GetcourseModule } from 'src/integration/getcourse/getcourse.module';
         FilesModule,
         EventModule,
         AttachmentsModule,
-        MessagesModule,
+        forwardRef(() => MessagesModule),
         GetcourseModule,
     ],
 })

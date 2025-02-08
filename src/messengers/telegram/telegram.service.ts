@@ -113,20 +113,30 @@ export class TelegramService {
 
     messageHandler = async (msg: TelegramBot.message) => {
         console.log('Сообщение из телеги', msg);
+
         const startCommandRegex = /^\/start/i;
-        if (msg.text && msg.text.length < 2) return;
         if (startCommandRegex.test(msg.text)) return;
+
+        if (msg.text && msg.text.length < 2) return;
+
         const messenger_id = msg.chat.id.toString();
         const messenger_type = 'telegram';
+
         let account_id: string = 'ecfafe4bc756935e17d93bec';
         let contact_id: string;
         let chat_id: string;
         let contact_photo_url: string;
-        let message_value = msg.text ? msg.text : '';
+        let message_value = msg.text || ' '; // Теперь текст всегда есть
         let message;
+        const attachments = {
+            files: [],
+            files_type: '',
+        };
         let params;
 
         const isChat = await this.chatsService.getChatByMessengerId(messenger_id);
+
+        // Проверка на наличие существующей переписки
 
         if (!isChat) {
             const contact_name: string = msg.chat.first_name || '';
@@ -159,38 +169,61 @@ export class TelegramService {
             contact_id = isChat.contact_id;
         }
 
-        if (msg.photo && msg.photo.length > 0) {
-            const photoUrl = await this.telegramBot.getFileLink(msg.photo[2].file_id);
-            const response = await axios.get(photoUrl, { responseType: 'arraybuffer' });
-            const imageBuffer = Buffer.from(response.data, 'binary');
-            const fileExtension = photoUrl.split('.').pop();
+        const mediaTypes = [
+            { key: 'photo', type: 'photo', ext: '.jpg' },
+            { key: 'document', type: 'document', ext: '' },
+            { key: 'audio', type: 'audio', ext: '.mp3' },
+            { key: 'voice', type: 'voice', ext: '.ogg' },
+            { key: 'video', type: 'video', ext: '.mp4' },
+            { key: 'video_note', type: 'video', ext: '.mp4' },
+        ];
 
-            params = {
-                message_value: msg.caption ? msg.caption : ' ',
-                message_type: 'text',
-                messenger_type: 'telegram',
-                manager_id: '',
-                contact_id,
-                chat_id,
-            };
-            message = await this.sendMessageFromTelegram(params, imageBuffer, fileExtension);
-        } else {
-            params = {
-                message_value,
-                message_type: 'text',
-                messenger_type: 'telegram',
-                manager_id: '',
-                contact_id,
-                chat_id,
-            };
-            message = await this.sendMessageFromTelegram(params);
-        }
-        /* if (message) {
-            const answerText = autoresponder(message.createdAt);
-            if (answerText) {
-                await this.messagesService.createMessage({ ...params, message_value: answerText });
+        for (const media of mediaTypes) {
+            if (msg[media.key]) {
+                let filesArray = Array.isArray(msg[media.key]) ? msg[media.key] : [msg[media.key]];
+
+                // Если это фото — выбираем самую большую версию
+                if (media.key === 'photo') {
+                    filesArray = [
+                        filesArray.reduce(
+                            (max, photo) => (photo.file_size > max.file_size ? photo : max),
+                            filesArray[0],
+                        ),
+                    ];
+                }
+
+                // Добавляем файлы в массив
+                for (const file of filesArray) {
+                    attachments.files.push({
+                        file_id: file.file_id,
+                        file_name: file.file_name || `${media.key}_${file.file_id}`,
+                        file_type: media.type,
+                        mime_type: file.mime_type || '',
+                    });
+                }
+                console.log('filesArray после создания', filesArray);
+
+                attachments.files_type = media.type;
             }
-        } */
+        }
+
+        const message_type = attachments.files_type.length > 0 ? 'media' : 'text';
+
+        params = {
+            message_value,
+            message_type,
+            messenger_type: 'telegram',
+            manager_id: '',
+            contact_id,
+            chat_id,
+            attachments,
+        };
+        console.log('params', params);
+        console.log('params.attachments', attachments);
+
+        message = await this.messagesService.createMessage(params);
+
+        this.eventGateway.ioServer.emit('update', { message });
     };
 
     getTelegramAvatarFile = async (messenger_id: string) => {
@@ -211,27 +244,5 @@ export class TelegramService {
             return imageBuffer;
         }
         return '';
-    };
-
-    sendMessageFromTelegram = async (params: CreateMessageDto, file?, fileExtension?) => {
-        //@ts-ignore
-        const message = await this.messagesService.createMessage(params);
-
-        //сюда нужно вставить attachments
-        if (file && fileExtension) {
-            const fileData = await this.filesService.saveChatImage(file, fileExtension);
-            const dto = {
-                message_id: message.message_id,
-                attachment_name: fileData.fileName,
-                attachment_url: 'assets/images/chats/' + fileData.fileName,
-                attachment_type: 'image',
-                attachment_src: 'https://beechat.ru/assets/images/chats/' + fileData.fileName,
-                attachment_market: {},
-            };
-            this.attachmentsService.createAttachment(dto, fileData.filePath);
-        }
-        this.eventGateway.ioServer.emit('update', { message });
-
-        return message;
     };
 }

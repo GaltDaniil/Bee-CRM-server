@@ -1,5 +1,6 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
+import { io, Socket } from 'socket.io-client';
 
 import { customAlphabet } from 'nanoid';
 import { Message } from './messages.model';
@@ -9,15 +10,24 @@ import { TelegramService } from 'src/messengers/telegram/telegram.service';
 import { EventGateway } from 'src/event/event.gateway';
 import { Attachment } from 'src/attachments/attachments.model';
 import { tgBot, vkBot, waBot } from 'src/messengers/bots.init';
+import { AttachmentsService } from 'src/attachments/attachments.service';
+
+import { Upload } from 'vk-io';
+import { FilesService } from 'src/files/files.service';
+import { WaService } from 'src/messengers/wa/wa.service';
 
 const nanoid = customAlphabet('abcdef123456789', 24);
 
 @Injectable()
 export class MessagesService {
+    private socket: Socket;
     constructor(
         @InjectModel(Message) private messageRepository: typeof Message,
         private chatsService: ChatsService,
+        private filesService: FilesService,
+        private attachmentsService: AttachmentsService,
         private eventGateway: EventGateway,
+        @Inject(forwardRef(() => WaService)) private whatsappService: WaService,
     ) {}
 
     async getAllMessages() {
@@ -69,7 +79,21 @@ export class MessagesService {
         try {
             //@ts-ignore
             dto.message_id = nanoid();
+
             const message = await this.messageRepository.create(dto);
+
+            console.log('сообщение создалось в createMessage', message);
+
+            if (dto.attachments && dto.attachments.files.length > 0) {
+                const path = await this.filesService.sortAttachments(
+                    message.message_id,
+                    dto.attachments,
+                    dto.messenger_type,
+                );
+            }
+
+            // УВЕДОМЛЕНИЕ ДЛЯ МЕНЕДЖЕРОВ
+
             if (!dto.manager_id) {
                 this.chatsService.addUnreadCount(dto.chat_id);
                 // Лиля
@@ -92,8 +116,17 @@ export class MessagesService {
                 );
             } else {
                 this.chatsService.readAllMessages(dto.chat_id);
+                if (dto.manager_id === 'main') {
+                    return message;
+                } else {
+                    this.sendMessageToMessenger(
+                        dto.messenger_id,
+                        dto.messenger_type,
+                        dto.message_value,
+                    );
+                }
             }
-            this.sendMessageToMessenger(dto.messenger_id, dto.messenger_type, dto.message_value);
+
             return message;
         } catch (error) {
             console.log(error);
@@ -131,19 +164,56 @@ export class MessagesService {
             if (messenger_type === 'instagram') {
             }
             if (messenger_type === 'wa') {
-                waBot
-                    .sendMessage(messenger_id, message_value)
-                    .then((response) => {
-                        console.log('Message sent successfully:', response);
-                    })
-                    .catch((error) => {
-                        console.error('Error sending message:', error);
-                    });
+                this.whatsappService.sendMessage(messenger_id, message_value);
             }
         } catch (error) {
             console.log(error);
         }
     }
+
+    /* async sendVkMessage(message: CreateMessageDto) {
+        const { message_value, attachments, messenger_id } = message;
+
+        try {
+            // 1. Если есть вложения, загружаем их
+            let attachmentString = '';
+            const upload = new Upload(vkBot);
+
+            console.log('upload', upload);
+
+            if (attachments && attachments.length > 0) {
+                const uploadPromises = attachments.map(async (attachment) => {
+                    // Загружаем только изображения
+                    if (attachment.attachment_type === 'image') {
+                        // Загружаем фото
+                        const uploaded = await upload.messagePhoto({
+                            source: {
+                                value: attachment.attachment_src, // Если файл на сервере
+                            },
+                        });
+                        return `photo${uploaded[0].owner_id}_${uploaded[0].id}`;
+                    }
+                    // Обработайте другие типы вложений (если нужно)
+                });
+
+                // Ждем завершения загрузки всех файлов
+                const uploadedAttachments = await Promise.all(uploadPromises);
+                attachmentString = uploadedAttachments.join(',');
+            }
+
+            // 2. Отправляем сообщение
+            await vkBot.api.messages.send({
+                user_id: Number(messenger_id), // ID пользователя ВКонтакте
+                message: message_value, // Текст сообщения
+                random_id: Date.now(), // Уникальный идентификатор для сообщения
+                attachment: attachmentString, // Вложения (если есть)
+            });
+
+            console.log('Сообщение отправлено!');
+        } catch (error) {
+            console.error('Ошибка при отправке сообщения:', error);
+        }
+    } */
 
     /* async updateMessage(id: string, dto: UpdateChatDto) {
         try {

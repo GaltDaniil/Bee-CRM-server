@@ -5,6 +5,7 @@ import { InjectModel } from '@nestjs/sequelize';
 import { nanoid } from 'nanoid';
 import * as path from 'path';
 import * as fs from 'fs';
+import { CreateMessageDto } from 'src/messages/dto/create-message.dto';
 
 @Injectable()
 export class AttachmentsService {
@@ -13,7 +14,9 @@ export class AttachmentsService {
     async createAttachment(dto: CreateAttachmentDto, filePath) {
         try {
             dto.attachment_id = nanoid();
+
             const attachment = await this.attachmentRepository.create(dto);
+            console.log('attachment успешно создался', attachment);
         } catch (error) {
             console.log(error);
             if (fs.existsSync(filePath)) {
@@ -25,6 +28,7 @@ export class AttachmentsService {
             );
         }
     }
+
     async deleteAttachment(attachment_id) {
         return await this.attachmentRepository.destroy({ where: { attachment_id } });
     }

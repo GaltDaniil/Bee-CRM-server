@@ -45,9 +45,9 @@ export class Message extends Model<Message, MessageCreationAttrs> {
     @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
     is_readed: string;
 
-    @HasMany(() => Attachment, { onDelete: 'cascade' })
+    @HasMany(() => Attachment, { onDelete: 'CASCADE' }) // Каскадное удаление вложений
     attachments: Attachment[];
 
-    @BelongsTo(() => Chat)
+    @BelongsTo(() => Chat, { onDelete: 'CASCADE' }) // При удалении чата удалятся все сообщения
     chat: Chat;
 }

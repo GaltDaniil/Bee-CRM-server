@@ -25,7 +25,6 @@ async function bootstrap() {
     const waService = app.get(WaService);
     telegramService.init();
     vkService.init();
-    waService.init();
 
     app.useWebSocketAdapter(new SocketAdapter(app));
 

@@ -1,9 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const courseName = urlParams.get('name') || 'yoga_series_light'; // Извлекаем из URL или ставим значение по умолчанию
-    console.log('courseName', courseName);
     const iframe = document.querySelector('iframe');
-    console.log('iframe', iframe);
     let messageSent = false; // Флаг для предотвращения повторной отправки
 
     if (!iframe) {
