@@ -79,16 +79,19 @@ export class MessagesService {
         try {
             //@ts-ignore
             dto.message_id = nanoid();
+            console.log('createMessage', dto);
 
             const message = await this.messageRepository.create(dto);
 
             console.log('сообщение создалось в createMessage', message);
 
-            if (dto.attachments && dto.attachments.files.length > 0) {
-                const path = await this.filesService.sortAttachments(
+            if (dto.attachments) {
+                console.log(dto.attachments);
+                await this.attachmentsService.sortAttachments(
                     message.message_id,
                     dto.attachments,
                     dto.messenger_type,
+                    dto.message_from,
                 );
             }
 

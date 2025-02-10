@@ -57,6 +57,9 @@ export class Attachment extends Model<Attachment, AttachmentCreationAttrs> {
     @Column({ type: DataType.STRING, allowNull: true })
     attachment_url: string;
 
+    @Column({ type: DataType.STRING, allowNull: true })
+    attachment_extension: string;
+
     @Column({ type: DataType.JSONB, allowNull: true })
     attachment_market: object;
 

@@ -7,6 +7,7 @@ export class CreateAttachmentDto {
     attachment_type: string;
     attachment_url: string;
     attachment_market?: object;
+    attachment_extension?: string;
     card_id?: string;
     chat_id?: string;
     message_id?: string;

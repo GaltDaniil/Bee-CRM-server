@@ -4,11 +4,12 @@ import { AttachmentsService } from './attachments.service';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { Attachment } from './attachments.model';
 import { FilesModule } from 'src/files/files.module';
+import { AttachmentsProvider } from './attachments.provider';
 
 @Module({
     controllers: [AttachmentsController],
-    imports: [SequelizeModule.forFeature([Attachment])],
-    providers: [AttachmentsService],
+    imports: [SequelizeModule.forFeature([Attachment]), FilesModule],
+    providers: [AttachmentsService, AttachmentsProvider],
     exports: [AttachmentsService],
 })
 export class AttachmentsModule {}

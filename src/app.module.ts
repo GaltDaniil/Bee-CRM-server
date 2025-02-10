@@ -32,9 +32,13 @@ import { List } from './lists/lists.model';
 import { Board } from './boards/boards.model';
 import { Comment } from './comments/comments.model';
 import { WaModule } from './messengers/wa/wa.module';
+import { MulterModule } from '@nestjs/platform-express';
 
 @Module({
     imports: [
+        MulterModule.register({
+            dest: './uploads', // <-- Временная папка для загрузки
+        }),
         ConfigModule.forRoot({ envFilePath: '.env' }),
         SequelizeModule.forRoot({
             dialect: 'postgres',

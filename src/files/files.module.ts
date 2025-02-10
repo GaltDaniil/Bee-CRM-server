@@ -8,7 +8,7 @@ import { AttachmentsModule } from 'src/attachments/attachments.module';
 @Module({
     providers: [FilesService, TelegramProvider],
     exports: [FilesService],
-    imports: [CardsModule, AttachmentsModule],
+    imports: [CardsModule],
     controllers: [FilesController],
 })
 export class FilesModule {}

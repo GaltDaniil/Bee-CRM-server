@@ -9,13 +9,12 @@ import { CreateMessageDto } from 'src/messages/dto/create-message.dto';
 import { TelegramProvider } from './providers/telegram.provider';
 import { WhatsappProvider } from './providers/whatsapp.provider';
 import { VkProvider } from './providers/vk.provider';
-import { AttachmentsService } from 'src/attachments/attachments.service';
 
 @Injectable()
 export class FilesService {
     constructor(
         private cardsService: CardsService,
-        private attachmentsService: AttachmentsService,
+
         private readonly telegramProvider: TelegramProvider,
         //private readonly whatsappProvider: WhatsappProvider,
         //private readonly vkProvider: VkProvider,
@@ -65,8 +64,29 @@ export class FilesService {
         }
     }
 
+    async tempFiles(file) {
+        try {
+            console.log('Файл для временного хранения', file);
+            const folderPath = 'temp';
+            const uploadDir = path.resolve(__dirname, '../..', 'assets', folderPath);
+
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
+            }
+
+            const fullName = 'fileName';
+            const filePath = path.join(uploadDir, fullName);
+            fs.writeFileSync(filePath, file.buffer);
+            const urlPath = 'assets/' + folderPath + '/' + fullName;
+            return filePath;
+        } catch (error) {
+            console.log(error);
+            throw error;
+        }
+    }
+
     // Основная функция для сохранения файла
-    async saveChatFiles(files, message_id) {
+    /* async saveChatFiles(files, message_id) {
         try {
             // Массив для хранения информации о сохраненных файлах
             const savedFiles = [];
@@ -152,20 +172,22 @@ export class FilesService {
                 HttpStatus.INTERNAL_SERVER_ERROR,
             );
         }
-    }
+    } */
 
-    async sortAttachments(message_id, attachments, messenger_type) {
+    /* async sortAttachments(message_id, attachments, messenger_type) {
         let downloadedFiles;
 
         switch (messenger_type) {
             case 'telegram':
-                const downloadedFiles =
+                downloadedFiles =
                     await this.telegramProvider.downloadFilesFromTelegram(attachments);
                 await this.saveChatFiles(downloadedFiles, message_id);
                 return;
             case 'wa':
                 return;
             case 'vk':
+                //downloadedFiles = await this.vkProvider.downloadFilesFromVk(attachments);
+
                 return;
             case 'crm':
                 return;
@@ -173,5 +195,5 @@ export class FilesService {
                 console.error(`Неизвестный тип мессенджера: ${messenger_type}`);
                 return [];
         }
-    }
+    } */
 }

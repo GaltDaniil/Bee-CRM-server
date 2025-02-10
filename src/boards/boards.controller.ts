@@ -10,6 +10,7 @@ export class BoardsController {
     getBoards() {
         return this.boardsService.getBoards();
     }
+
     @Get(':id')
     getBoard(@Param('id') id: string) {
         return this.boardsService.getBoard(id);

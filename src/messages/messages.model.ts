@@ -30,6 +30,9 @@ export class Message extends Model<Message, MessageCreationAttrs> {
     @Column({ type: DataType.STRING, allowNull: false })
     message_type: string;
 
+    @Column({ type: DataType.STRING, allowNull: false })
+    message_from: string;
+
     @ForeignKey(() => Contact)
     @Column({ type: DataType.STRING, allowNull: false })
     contact_id: string;

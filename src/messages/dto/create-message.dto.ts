@@ -17,5 +17,6 @@ export class CreateMessageDto {
     readonly messenger_id?: string;
     readonly contact_id?: string;
     readonly manager_id?: string;
+    readonly message_from?: string;
     readonly attachments?: MessengerAttachments;
 }

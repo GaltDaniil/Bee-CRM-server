@@ -26,6 +26,7 @@ import { customAlphabet } from 'nanoid';
 import { AttachmentsService } from 'src/attachments/attachments.service';
 import { vkBot } from '../bots.init';
 import { autoresponder } from '../chatbot/autoresponder';
+import * as fs from 'fs';
 const nanoid = customAlphabet('abcdef123456789', 24);
 
 dotenv.config();
@@ -154,17 +155,21 @@ export class VkService {
             manager_id: '',
             contact_id,
             chat_id,
+            attachments: context.attachments ? context.attachments : [],
         };
 
-        const message = await this.sendMessageFromVk(params, context.attachments);
-        const answerText = autoresponder(message.createdAt);
+        const message = await this.messagesService.createMessage(params);
+
+        this.eventGateway.ioServer.emit('update', message);
+
+        /* const answerText = autoresponder(message.createdAt); */
         /* if (answerText) {
             await this.messagesService.createMessage({ ...params, message_value: answerText });
         } */
     };
 
     replyMessageHandler = async (context) => {
-        console.log('context', context);
+        console.log('replyMessageHandler', context);
         if (context.senderType === 'group') return;
 
         const messenger_id = context.peerId.toString();
@@ -195,88 +200,59 @@ export class VkService {
 
             const response = await axios.get(photo_200_orig, { responseType: 'arraybuffer' });
             const avatarFile = Buffer.from(response.data, 'binary');
-
-            console.log('contact_name', contact_name);
-            console.log('messenger_username', messenger_username);
-            console.log('avatarFile', avatarFile);
-
-            /* const fileName = await this.filesService.saveAvatarFromMessenger(
-                avatarFile,
-                messenger_id,
-            );
-            contact_photo_url = fileName;
-
-            const params = {
-                account_id,
-                contact_name,
-                contact_photo_url,
-                contact_vk_status: true,
-            };
-            const newContact: Contact = await this.contactsService.createContact(params);
-
-            if (newContact) {
-                contact_id = newContact.contact_id;
-                const params = {
-                    contact_id,
-                    messenger_id,
-                    messenger_type: 'vk',
-                    messenger_username,
-                };
-
-                const newChat = await this.chatsService.createChat(params);
-                chat_id = newChat.chat_id;
-            }
         } else {
             contact_id = isChat.contact_id;
             chat_id = isChat.chat_id;
         }
-
         const params = {
             message_value: context.text === undefined ? ' ' : context.text,
             message_type: 'text',
             messenger_type: 'vk',
-            manager_id: '',
-            contact_id,
-            chat_id,
-        }; */
-
-            //const message = await this.sendMessageFromVk(params, context.attachments);
-        } else {
-            contact_id = isChat.contact_id;
-            chat_id = isChat.chat_id;
-        }
-        const params = {
-            message_value: context.text === undefined ? ' ' : context.text,
-            message_type: 'text',
-            messenger_type: '',
             manager_id: context.senderId,
             messenger_id,
+            attachments: context.attachments ? context.attachments : [],
             contact_id,
             chat_id,
         };
 
         const message = await this.messagesService.createMessage(params);
-        console.log('context.attachments)', context.attachments);
 
-        if (context.attachments) {
+        /* if (context.attachments) {
             this.chechAttachments(context.attachments, message.chat_id, message.message_id);
-        }
+        } */
     };
 
-    sendMessageFromVk = async (params, attachments?) => {
-        console.log('sendMessageFromVk params', params);
-        console.log('sendMessageFromVk attachments', attachments);
-        const message = await this.messagesService.createMessage(params);
+    async uploadAttachmentToVK(filePath: string, peerId: number, type: 'photo' | 'document') {
+        try {
+            let attachment;
+            if (type === 'photo') {
+                const { id } = await vkBot.upload.messagePhoto({
+                    source: { value: fs.createReadStream(filePath) },
+                });
+                attachment = `photo_${id}`;
+            } else if (type === 'document') {
+                const { id } = await vkBot.upload.messageDocument({
+                    source: { value: fs.createReadStream(filePath) },
+                    peer_id: peerId, // Теперь правильно
+                });
+                attachment = `doc_${id}`;
+            } else {
+                throw new Error(`Unsupported attachment type: ${type}`);
+            }
 
-        if (attachments) {
-            this.chechAttachments(attachments, message.chat_id, message.message_id);
+            return attachment;
+        } catch (error) {
+            console.error(`Ошибка загрузки ${type} в VK:`, error);
+            throw error;
+        } finally {
+            // Удаляем временный файл после загрузки
+            fs.unlink(filePath, (err) => {
+                if (err) console.error(`Ошибка удаления временного файла ${filePath}:`, err);
+            });
         }
-        this.eventGateway.ioServer.emit('update', message);
+    }
 
-        return message;
-    };
-
-    chechAttachments = (attachments, chat_id?, message_id?) => {
+    /* chechAttachments = (attachments, chat_id?, message_id?) => {
         let attachmentData;
         for (const attachment of attachments) {
             if (attachment instanceof MarketAttachment) {
@@ -312,11 +288,7 @@ export class VkService {
                     message_id,
                 };
                 attachmentData = this.attachmentsService.createAttachment(params, '');
-                /* if (photoUrl) {
-                        // Сохраняем фото на сервере или выполняем другие действия
-                        const savedPhoto = await this.saveAttachment(photoUrl);
-                        console.log('Сохраненное фото:', savedPhoto);
-                    } */
+                
             } else if (attachment instanceof AudioMessageAttachment) {
                 console.log('Да, это голосовое');
                 // Если вложение - аудио
@@ -346,5 +318,5 @@ export class VkService {
             // Другие типы вложений можно обработать аналогичным образом
             return attachmentData;
         }
-    };
+    }; */
 }
