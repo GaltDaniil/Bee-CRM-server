@@ -119,7 +119,7 @@ export class MessagesService {
                 );
             } else {
                 this.chatsService.readAllMessages(dto.chat_id);
-                if (dto.manager_id === 'main') {
+                if (dto.message_from === 'main') {
                     return message;
                 } else {
                     this.sendMessageToMessenger(

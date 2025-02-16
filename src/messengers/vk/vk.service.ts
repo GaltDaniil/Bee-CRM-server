@@ -1,16 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-    AudioAttachment,
-    AudioMessageAttachment,
-    DocumentAttachment,
-    LinkAttachment,
-    MarketAttachment,
-    PhotoAttachment,
-    StickerAttachment,
-    VideoAttachment,
-    VK,
-    Keyboard,
-} from 'vk-io';
+import { VK, Keyboard } from 'vk-io';
 import { ChatsService } from 'src/chats/chats.service';
 import { ContactsService } from 'src/contacts/contacts.service';
 import { FilesService } from 'src/files/files.service';
@@ -20,13 +9,11 @@ import { urlParser } from '../middleware/urlParser';
 import axios from 'axios';
 import { Contact } from 'src/contacts/contacts.model';
 import { EventGateway } from 'src/event/event.gateway';
-import { Message } from 'src/messages/messages.model';
-import { InjectModel } from '@nestjs/sequelize';
 import { customAlphabet } from 'nanoid';
-import { AttachmentsService } from 'src/attachments/attachments.service';
 import { vkBot } from '../bots.init';
-import { autoresponder } from '../chatbot/autoresponder';
 import * as fs from 'fs';
+import path from 'path';
+import { error } from 'console';
 const nanoid = customAlphabet('abcdef123456789', 24);
 
 dotenv.config();
@@ -52,7 +39,6 @@ export class VkService {
         private contactsService: ContactsService,
         private chatsService: ChatsService,
         private messagesService: MessagesService,
-        private attachmentsService: AttachmentsService,
         private filesService: FilesService,
         private eventGateway: EventGateway,
     ) {}
@@ -170,29 +156,49 @@ export class VkService {
 
     replyMessageHandler = async (context) => {
         console.log('replyMessageHandler', context);
-        if (context.senderType === 'group') return;
 
-        const messenger_id = context.peerId.toString();
         let chat_id: string;
         let contact_id: string;
+        let manager_id: string;
+        let message_from;
+
+        if (context.senderType === 'group') {
+            return;
+        } else {
+            manager_id = String(context.senderId);
+            message_from = 'main';
+        }
+        console.log('manager_id', manager_id);
+
+        const messenger_id = String(context.peerId);
+
+        const members = await this.getManagersId(context.senderId);
 
         const isChat = await this.chatsService.getChatByMessengerId(messenger_id);
-        console.log('isChat', isChat);
-        if (!isChat) {
+
+        if (isChat) {
+            contact_id = isChat.contact_id;
+            chat_id = isChat.chat_id;
+        } else {
+            console.log('чат не найден');
+            throw error;
+        }
+
+        /* if (!isChat) {
             let account_id: string = 'ecfafe4bc756935e17d93bec';
 
             let contact_photo_url: string;
+            let from_url;
 
-            /* if (context.referralValue) {
+            if (context.referralValue) {
                 const parsedParams = await urlParser(context.referralValue);
                 account_id = parsedParams.account_id || 'ecfafe4bc756935e17d93bec';
-            } */
+                from_url = parsedParams.from_url || '';
+            }
             const vkData = await this.VKBot.api.users.get({
                 user_ids: [context.senderId],
                 fields: ['photo_200_orig', 'nickname'],
             });
-
-            console.log('vkData', vkData);
             const { photo_200_orig, first_name, last_name, nickname } = vkData[0];
 
             const contact_name: string = first_name + ' ' + last_name || '';
@@ -200,15 +206,45 @@ export class VkService {
 
             const response = await axios.get(photo_200_orig, { responseType: 'arraybuffer' });
             const avatarFile = Buffer.from(response.data, 'binary');
+
+            const fileName = await this.filesService.saveAvatarFromMessenger(
+                avatarFile,
+                messenger_id,
+            );
+            contact_photo_url = fileName;
+
+            const params = {
+                account_id,
+                contact_name,
+                contact_photo_url,
+                contact_vk_status: true,
+            };
+            const newContact: Contact = await this.contactsService.createContact(params);
+
+            if (newContact) {
+                contact_id = newContact.contact_id;
+                const params = {
+                    contact_id,
+                    messenger_id,
+                    messenger_type: 'vk',
+                    messenger_username,
+                    from_url,
+                };
+
+                const newChat = await this.chatsService.createChat(params);
+                chat_id = newChat.chat_id;
+            }
         } else {
             contact_id = isChat.contact_id;
             chat_id = isChat.chat_id;
-        }
+        } */
+
         const params = {
             message_value: context.text === undefined ? ' ' : context.text,
             message_type: 'text',
             messenger_type: 'vk',
-            manager_id: context.senderId,
+            message_from,
+            manager_id,
             messenger_id,
             attachments: context.attachments ? context.attachments : [],
             contact_id,
@@ -222,7 +258,23 @@ export class VkService {
         } */
     };
 
-    async uploadAttachmentToVK(filePath: string, peerId: number, type: 'photo' | 'document') {
+    async getManagersId(senderId) {
+        const groups = await vkBot.api.groups.getById({});
+        //@ts-ignore
+        const groupId = groups.groups[0].id;
+        const admins = await vkBot.api.groups.getMembers({
+            group_id: groupId,
+            filter: 'managers',
+        });
+
+        console.log('admins', admins);
+
+        console.log(admins.items);
+        //@ts-ignore
+        return admins.items.some((admin) => String(admin.id) === String(senderId));
+    }
+
+    /* async uploadAttachmentToVK(filePath: string, peerId: number, type: 'photo' | 'document') {
         try {
             let attachment;
             if (type === 'photo') {
@@ -250,7 +302,53 @@ export class VkService {
                 if (err) console.error(`Ошибка удаления временного файла ${filePath}:`, err);
             });
         }
+    } */
+
+    /* private async uploadToVK(filePath: string): Promise<string> {
+        console.log('uploadToVK отработал вот вложение filePath', filePath);
+        // 1. Получаем URL для загрузки
+        const { upload_url } = await vkBot.api.photos.getMessagesUploadServer({});
+        const formData = new FormData();
+        formData.append('photo', fs.createReadStream(filePath));
+
+        // 2. Отправляем фото на сервер VK
+        const uploadResponse = await fetch(upload_url, { method: 'POST', body: formData });
+        const uploadResult = await uploadResponse.json();
+
+        // 3. Сохраняем фото в альбоме сообщений
+        const savedPhotos = await vkBot.api.photos.saveMessagesPhoto(uploadResult);
+        const photo = savedPhotos[0];
+
+        // 4. Формируем ссылку на изображение
+        const imageUrl = `https://vk.com/photo${photo.owner_id}_${photo.id}`;
+
+        console.log('imageUrl вот что получилось', imageUrl);
+
+        return imageUrl;
+    } */
+
+    async uploadAndSendDocument(filePath: string, peer_id: number) {
+        console.log('uploadAndSendDocument отработал');
+        const doc = await vkBot.upload.messageDocument({
+            source: {
+                value: fs.createReadStream(filePath), // Используем поток (stream)
+                filename: path.basename(filePath), // Указываем имя файла
+            },
+            title: path.basename(filePath),
+        });
+
+        const attachment = `doc${doc.ownerId}_${doc.id}`;
+
+        await vkBot.api.messages.send({
+            peer_id,
+            attachment,
+            random_id: Date.now(),
+        });
+
+        console.log(`Документ отправлен пользователю ${peer_id}`);
     }
+
+    async uploadFilesToVk() {}
 
     /* chechAttachments = (attachments, chat_id?, message_id?) => {
         let attachmentData;

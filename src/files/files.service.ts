@@ -8,7 +8,6 @@ import { CreateMessageDto } from 'src/messages/dto/create-message.dto';
 
 import { TelegramProvider } from './providers/telegram.provider';
 import { WhatsappProvider } from './providers/whatsapp.provider';
-import { VkProvider } from './providers/vk.provider';
 
 @Injectable()
 export class FilesService {
@@ -74,7 +73,7 @@ export class FilesService {
                 fs.mkdirSync(uploadDir, { recursive: true });
             }
 
-            const fullName = 'fileName';
+            const fullName = file.originalname;
             const filePath = path.join(uploadDir, fullName);
             fs.writeFileSync(filePath, file.buffer);
             const urlPath = 'assets/' + folderPath + '/' + fullName;

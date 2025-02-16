@@ -1,13 +1,11 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { VkService } from './vk.service';
 import { ChatsModule } from 'src/chats/chats.module';
 import { ContactsModule } from 'src/contacts/contacts.module';
 import { FilesModule } from 'src/files/files.module';
 import { EventModule } from 'src/event/event.module';
-import { SequelizeModule } from '@nestjs/sequelize';
-import { Message } from 'src/messages/messages.model';
-import { AttachmentsModule } from 'src/attachments/attachments.module';
 import { MessagesModule } from 'src/messages/messages.module';
+import { AttachmentsModule } from 'src/attachments/attachments.module';
 
 @Module({
     exports: [VkService],
@@ -17,8 +15,8 @@ import { MessagesModule } from 'src/messages/messages.module';
         ContactsModule,
         FilesModule,
         EventModule,
-        AttachmentsModule,
-        MessagesModule,
+        forwardRef(() => MessagesModule),
+        forwardRef(() => AttachmentsModule),
     ],
 })
 export class VkModule {}

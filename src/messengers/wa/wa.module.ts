@@ -4,7 +4,6 @@ import { ChatsModule } from 'src/chats/chats.module';
 import { ContactsModule } from 'src/contacts/contacts.module';
 import { FilesModule } from 'src/files/files.module';
 import { EventModule } from 'src/event/event.module';
-import { AttachmentsModule } from 'src/attachments/attachments.module';
 import { MessagesModule } from 'src/messages/messages.module';
 import { WaController } from './wa.controller';
 import { GetcourseModule } from 'src/integration/getcourse/getcourse.module';
@@ -18,7 +17,6 @@ import { GetcourseModule } from 'src/integration/getcourse/getcourse.module';
         ContactsModule,
         FilesModule,
         EventModule,
-        AttachmentsModule,
         forwardRef(() => MessagesModule),
         GetcourseModule,
     ],

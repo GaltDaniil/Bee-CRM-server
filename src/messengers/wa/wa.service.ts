@@ -45,7 +45,6 @@ export class WaService {
         private filesService: FilesService,
         private eventGateway: EventGateway,
         private getcourseService: GetcourseService,
-        private attachmentsService: AttachmentsService,
         @Inject(forwardRef(() => MessagesService)) private messagesService: MessagesService,
     ) {
         const socketInstance = SocketWhatsapp.getInstance();

@@ -21,7 +21,7 @@ import { WaModule } from 'src/messengers/wa/wa.module';
         ChatsModule,
         EventModule,
         FilesModule,
-        AttachmentsModule,
+        forwardRef(() => AttachmentsModule),
     ],
     exports: [MessagesService],
 })

@@ -6,6 +6,7 @@ import { nanoid } from 'nanoid';
 import * as path from 'path';
 import * as fs from 'fs';
 import { AttachmentsProvider } from './attachments.provider';
+import { VkService } from 'src/messengers/vk/vk.service';
 
 @Injectable()
 export class AttachmentsService {
@@ -29,6 +30,7 @@ export class AttachmentsService {
                     attachments,
                     message_from,
                 );
+
                 break;
             case 'crm':
                 return;

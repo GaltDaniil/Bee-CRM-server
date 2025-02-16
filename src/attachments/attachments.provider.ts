@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { FilesService } from 'src/files/files.service';
+import { VkService } from 'src/messengers/vk/vk.service';
 
 import {
     AudioAttachment,
@@ -16,9 +17,13 @@ import {
 export class AttachmentsProvider {
     // ВК
 
-    constructor(private filesService: FilesService) {}
+    constructor(
+        //@Inject(forwardRef(() => VkService)) private vkService: VkService,
+        private filesService: FilesService,
+    ) {}
 
     async vkAttachmentsParser(attachments, message_from) {
+        console.log('message_from', message_from);
         try {
             let attachmentData = [];
             let params;
@@ -82,9 +87,6 @@ export class AttachmentsProvider {
                     console.log('Да, аудио сообщение');
                     // Если вложение - аудио
                     // Обработка аудиофайла, сохранение на сервере и т.д.
-                } else if (message_from && message_from === 'crm') {
-                    console.log('Опа, получены файлы с CRM или c сообщества', attachment);
-                    //const filePath = this.filesService.tempFiles(attachment.file);
                 }
 
                 if (params) {
