@@ -16,7 +16,6 @@ import { AttachmentsModule } from 'src/attachments/attachments.module';
         FilesModule,
         EventModule,
         forwardRef(() => MessagesModule),
-        forwardRef(() => AttachmentsModule),
     ],
 })
 export class VkModule {}

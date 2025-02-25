@@ -4,7 +4,7 @@ import { io, Socket } from 'socket.io-client';
 
 import { customAlphabet } from 'nanoid';
 import { Message } from './messages.model';
-import { CreateMessageDto } from './dto/create-message.dto';
+import { CreateMessageDto, MessengerAttachments } from './dto/create-message.dto';
 import { ChatsService } from 'src/chats/chats.service';
 import { TelegramService } from 'src/messengers/telegram/telegram.service';
 import { EventGateway } from 'src/event/event.gateway';
@@ -24,9 +24,7 @@ export class MessagesService {
     constructor(
         @InjectModel(Message) private messageRepository: typeof Message,
         private chatsService: ChatsService,
-        private filesService: FilesService,
         private attachmentsService: AttachmentsService,
-        private eventGateway: EventGateway,
         @Inject(forwardRef(() => WaService)) private whatsappService: WaService,
     ) {}
 
@@ -77,9 +75,9 @@ export class MessagesService {
 
     async createMessage(dto: CreateMessageDto) {
         try {
+            console.log('Начало создания сообщения', dto);
             //@ts-ignore
             dto.message_id = nanoid();
-            console.log('createMessage', dto);
 
             const message = await this.messageRepository.create(dto);
 
@@ -87,12 +85,7 @@ export class MessagesService {
 
             if (dto.attachments) {
                 console.log(dto.attachments);
-                await this.attachmentsService.sortAttachments(
-                    message.message_id,
-                    dto.attachments,
-                    dto.messenger_type,
-                    dto.message_from,
-                );
+                await this.attachmentsService.sortAttachments(message.message_id, dto);
             }
 
             // УВЕДОМЛЕНИЕ ДЛЯ МЕНЕДЖЕРОВ
@@ -126,6 +119,7 @@ export class MessagesService {
                         dto.messenger_id,
                         dto.messenger_type,
                         dto.message_value,
+                        dto.attachments,
                     );
                 }
             }
@@ -151,6 +145,7 @@ export class MessagesService {
         messenger_id: string,
         messenger_type: string,
         message_value: string,
+        attachments?: MessengerAttachments,
     ) {
         try {
             if (messenger_type === 'telegram') {

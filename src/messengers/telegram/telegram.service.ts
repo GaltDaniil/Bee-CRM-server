@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { forwardRef, HttpException, Inject, Injectable } from '@nestjs/common';
 import * as TelegramBot from 'node-telegram-bot-api';
 import * as dotenv from 'dotenv';
 import { urlParser } from '../middleware/urlParser';
@@ -25,10 +25,9 @@ const { TELEGRAM_TOKEN } = process.env;
 export class TelegramService {
     constructor(
         private contactsService: ContactsService,
-        private messagesService: MessagesService,
+        @Inject(forwardRef(() => MessagesService)) private messagesService: MessagesService,
         private chatsService: ChatsService,
         private filesService: FilesService,
-        private attachmentsService: AttachmentsService,
         private eventGateway: EventGateway,
     ) {}
     telegramBot: TelegramBot;
@@ -244,5 +243,21 @@ export class TelegramService {
             return imageBuffer;
         }
         return '';
+    };
+
+    downloadFileFromTg = async (file) => {
+        let fileUrl = await tgBot.getFileLink(file.file_id);
+        let fileName = file.file_name || `${file.file_type}_${Date.now()}`;
+        let fileType = file.file_type;
+
+        const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+
+        const savedFilePathAndUrl = await this.filesService.saveFile(
+            response.data,
+            fileName,
+            fileType,
+        );
+
+        return savedFilePathAndUrl;
     };
 }

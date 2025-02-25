@@ -20,7 +20,6 @@ import { WaModule } from 'src/messengers/wa/wa.module';
         SequelizeModule.forFeature([Message]),
         ChatsModule,
         EventModule,
-        FilesModule,
         forwardRef(() => AttachmentsModule),
     ],
     exports: [MessagesService],

@@ -3,32 +3,33 @@ import { CreateAttachmentDto } from './dto/attachment.dto';
 import { Attachment } from './attachments.model';
 import { InjectModel } from '@nestjs/sequelize';
 import { nanoid } from 'nanoid';
-import * as path from 'path';
 import * as fs from 'fs';
 import { AttachmentsProvider } from './attachments.provider';
-import { VkService } from 'src/messengers/vk/vk.service';
 
 @Injectable()
 export class AttachmentsService {
     constructor(
         @InjectModel(Attachment) private attachmentRepository: typeof Attachment,
-        private readonly attachmentsProvider: AttachmentsProvider,
+
+        private attachmentsProvider: AttachmentsProvider,
     ) {}
 
-    async sortAttachments(message_id, attachments, messenger_type, message_from) {
+    async sortAttachments(message_id, dto) {
+        const { attachments, messenger_type, message_from, messenger_id } = dto;
         let attachmentsDataArray;
 
         switch (messenger_type) {
             case 'telegram':
-            /* attachmentsDataArray =
+                attachmentsDataArray =
                     await this.attachmentsProvider.telegramAttachmentsParser(attachments);
-                break; */
+                break;
             case 'wa':
                 break;
             case 'vk':
                 attachmentsDataArray = await this.attachmentsProvider.vkAttachmentsParser(
                     attachments,
                     message_from,
+                    messenger_id,
                 );
 
                 break;

@@ -17,8 +17,7 @@ import { MessagesModule } from 'src/messages/messages.module';
         ContactsModule,
         FilesModule,
         EventModule,
-        AttachmentsModule,
-        MessagesModule,
+        forwardRef(() => MessagesModule),
     ],
 })
 export class TelegramModule {}

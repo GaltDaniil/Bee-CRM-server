@@ -6,10 +6,17 @@ import { Attachment } from './attachments.model';
 import { FilesModule } from 'src/files/files.module';
 import { AttachmentsProvider } from './attachments.provider';
 import { VkModule } from 'src/messengers/vk/vk.module';
+import { TelegramModule } from 'src/messengers/telegram/telegram.module';
 
 @Module({
     controllers: [AttachmentsController],
-    imports: [SequelizeModule.forFeature([Attachment]), FilesModule, forwardRef(() => VkModule)],
+    imports: [
+        SequelizeModule.forFeature([Attachment]),
+        FilesModule,
+        forwardRef(() => VkModule),
+
+        forwardRef(() => TelegramModule),
+    ],
     providers: [AttachmentsService, AttachmentsProvider],
     exports: [AttachmentsService],
 })

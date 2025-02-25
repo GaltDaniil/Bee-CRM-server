@@ -1,6 +1,8 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import axios from 'axios';
 import { FilesService } from 'src/files/files.service';
 import { VkService } from 'src/messengers/vk/vk.service';
+import { tgBot } from 'src/messengers/bots.init';
 
 import {
     AudioAttachment,
@@ -12,17 +14,20 @@ import {
     StickerAttachment,
     VideoAttachment,
 } from 'vk-io';
+import { TelegramService } from 'src/messengers/telegram/telegram.service';
 
 @Injectable()
 export class AttachmentsProvider {
     // ВК
 
     constructor(
-        //@Inject(forwardRef(() => VkService)) private vkService: VkService,
         private filesService: FilesService,
+        private vkService: VkService,
+        private telegramService: TelegramService,
+        //@Inject(forwardRef(() => TelegramService)) private telegramService: TelegramService,
     ) {}
 
-    async vkAttachmentsParser(attachments, message_from) {
+    async vkAttachmentsParser(attachments, message_from, messenger_id) {
         console.log('message_from', message_from);
         try {
             let attachmentData = [];
@@ -87,6 +92,24 @@ export class AttachmentsProvider {
                     console.log('Да, аудио сообщение');
                     // Если вложение - аудио
                     // Обработка аудиофайла, сохранение на сервере и т.д.
+                } else if (message_from === 'crm') {
+                    console.log('Да, сообщение получено из CRM');
+
+                    const tempFilePath = await this.filesService.tempFiles(attachment);
+                    console.log('tempFilePath', tempFilePath);
+                    const { url, extension } = await this.vkService.uploadAndSendDocument(
+                        tempFilePath,
+                        messenger_id,
+                    );
+
+                    params = {
+                        attachment_name: attachment.originalname,
+                        attachment_src: url,
+                        attachment_type: 'document',
+                        attachment_url: url,
+                        attachment_extension: attachment.extension || extension,
+                        attachment_market: {},
+                    };
                 }
 
                 if (params) {
@@ -100,5 +123,34 @@ export class AttachmentsProvider {
         }
     }
 
-    async telegramAttachmentsParser() {}
+    async telegramAttachmentsParser(attachments) {
+        if (!attachments || !attachments.files || attachments.files.length === 0) {
+            return [];
+        }
+
+        const attachmentData = [];
+        let params;
+
+        for (const file of attachments.files) {
+            try {
+                let fileName = file.file_name || `${file.file_type}_${Date.now()}`;
+                let fileType = file.file_type;
+                let { filePath, fileUrl } = await this.telegramService.downloadFileFromTg(file);
+
+                params = {
+                    attachment_name: fileName,
+                    attachment_src: filePath,
+                    attachment_type: fileType,
+                    attachment_url: fileUrl,
+                    attachment_market: {},
+                };
+                console.log('params', params);
+                attachmentData.push(params);
+            } catch (error) {
+                console.error(`❌ Ошибка при скачивании файла ${file.file_name}:`, error);
+            }
+        }
+        console.log('attachmentData', attachmentData);
+        return attachmentData;
+    }
 }

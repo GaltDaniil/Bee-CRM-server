@@ -42,7 +42,6 @@ export class WaService {
     constructor(
         private contactsService: ContactsService,
         private chatsService: ChatsService,
-        private filesService: FilesService,
         private eventGateway: EventGateway,
         private getcourseService: GetcourseService,
         @Inject(forwardRef(() => MessagesService)) private messagesService: MessagesService,

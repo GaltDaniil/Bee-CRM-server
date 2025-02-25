@@ -15,7 +15,6 @@ import { GetcourseModule } from 'src/integration/getcourse/getcourse.module';
     imports: [
         ChatsModule,
         ContactsModule,
-        FilesModule,
         EventModule,
         forwardRef(() => MessagesModule),
         GetcourseModule,

@@ -20,12 +20,11 @@ export class MessagesController {
 
     @ApiOperation({ summary: 'Создание сообщения' })
     @ApiResponse({ status: 200, type: Message })
-    @Post()
+    /* @Post()
     create(@Body() dto: CreateMessageDto) {
         return this.messagesService.createMessage(dto);
-    }
-
-    @Post('/test')
+    } */
+    @Post()
     @UseInterceptors(FilesInterceptor('attachments')) // Обрабатываем файлы
     createMessage(@Body() dto, @UploadedFiles() files) {
         console.log('DTO:', dto); // Проверь, что тут есть все поля

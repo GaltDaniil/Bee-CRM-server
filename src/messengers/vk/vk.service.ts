@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { VK, Keyboard } from 'vk-io';
 import { ChatsService } from 'src/chats/chats.service';
 import { ContactsService } from 'src/contacts/contacts.service';
@@ -12,7 +12,7 @@ import { EventGateway } from 'src/event/event.gateway';
 import { customAlphabet } from 'nanoid';
 import { vkBot } from '../bots.init';
 import * as fs from 'fs';
-import path from 'path';
+import * as path from 'path';
 import { error } from 'console';
 const nanoid = customAlphabet('abcdef123456789', 24);
 
@@ -38,7 +38,7 @@ export class VkService {
     constructor(
         private contactsService: ContactsService,
         private chatsService: ChatsService,
-        private messagesService: MessagesService,
+        @Inject(forwardRef(() => MessagesService)) private messagesService: MessagesService,
         private filesService: FilesService,
         private eventGateway: EventGateway,
     ) {}
@@ -168,11 +168,10 @@ export class VkService {
             manager_id = String(context.senderId);
             message_from = 'main';
         }
-        console.log('manager_id', manager_id);
 
         const messenger_id = String(context.peerId);
 
-        const members = await this.getManagersId(context.senderId);
+        //const members = await this.getManagersId(context.senderId);
 
         const isChat = await this.chatsService.getChatByMessengerId(messenger_id);
 
@@ -328,24 +327,32 @@ export class VkService {
     } */
 
     async uploadAndSendDocument(filePath: string, peer_id: number) {
-        console.log('uploadAndSendDocument отработал');
-        const doc = await vkBot.upload.messageDocument({
-            source: {
-                value: fs.createReadStream(filePath), // Используем поток (stream)
-                filename: path.basename(filePath), // Указываем имя файла
-            },
-            title: path.basename(filePath),
-        });
+        try {
+            console.log('uploadDocument отработал на входе ', filePath);
 
-        const attachment = `doc${doc.ownerId}_${doc.id}`;
+            // Загружаем документ на сервер ВК
+            const doc = await vkBot.upload.messageDocument({
+                source: {
+                    value: fs.createReadStream(filePath), // Поток файла
+                    filename: path.basename(filePath),
+                },
+                title: path.basename(filePath),
+                peer_id, // Обязательно нужен для загрузки
+            });
 
-        await vkBot.api.messages.send({
-            peer_id,
-            attachment,
-            random_id: Date.now(),
-        });
+            const vkAttachment = `doc${doc.ownerId}_${doc.id}`;
 
-        console.log(`Документ отправлен пользователю ${peer_id}`);
+            await vkBot.api.messages.send({
+                peer_id: peer_id,
+                attachment: vkAttachment,
+                random_id: Math.floor(Math.random() * 1000000),
+            });
+
+            return { url: doc.url, extension: doc.extension };
+        } catch (error) {
+            console.error('Ошибка при загрузке документа:', error);
+            throw error;
+        }
     }
 
     async uploadFilesToVk() {}
