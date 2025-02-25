@@ -32,6 +32,12 @@ export class AttachmentsProvider {
         try {
             let attachmentData = [];
             let params;
+            const typeMapping = {
+                photo: 'image',
+                video: 'video',
+                audio: 'audio',
+                document: 'document',
+            };
             for (const attachment of attachments) {
                 if (attachment instanceof MarketAttachment) {
                     console.log('Да, это товар', attachment);
@@ -124,18 +130,30 @@ export class AttachmentsProvider {
     }
 
     async telegramAttachmentsParser(attachments) {
-        if (!attachments || !attachments.files || attachments.files.length === 0) {
+        if (
+            !attachments ||
+            !attachments.files ||
+            !Array.isArray(attachments.files) ||
+            attachments.files.length === 0
+        ) {
+            console.log('⛔ Нет файлов для обработки');
             return [];
         }
 
         const attachmentData = [];
+        const typeMapping = {
+            photo: 'image',
+            video: 'video',
+            audio: 'audio',
+            document: 'document',
+        };
         let params;
 
         for (const file of attachments.files) {
             try {
                 let fileName = file.file_name || `${file.file_type}_${Date.now()}`;
-                let fileType = file.file_type;
-                let { filePath, fileUrl } = await this.telegramService.downloadFileFromTg(file);
+                let { filePath, fileUrl, fileType } =
+                    await this.telegramService.downloadFileFromTg(file);
 
                 params = {
                     attachment_name: fileName,

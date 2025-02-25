@@ -246,18 +246,30 @@ export class TelegramService {
     };
 
     downloadFileFromTg = async (file) => {
-        let fileUrl = await tgBot.getFileLink(file.file_id);
-        let fileName = file.file_name || `${file.file_type}_${Date.now()}`;
-        let fileType = file.file_type;
+        try {
+            let fileType = file.file_type;
 
-        const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+            let fileName = file.file_name || `${fileType}_${Date.now()}`;
 
-        const savedFilePathAndUrl = await this.filesService.saveFile(
-            response.data,
-            fileName,
-            fileType,
-        );
+            // Если это фото и нет mime_type, предполагаем JPG
+            if (fileType === 'photo' && !file.mime_type) {
+                fileName = fileName.endsWith('.jpg') ? fileName : `${fileName}.jpg`;
+                fileType = 'image';
+            }
 
-        return savedFilePathAndUrl;
+            let fileUrl = await tgBot.getFileLink(file.file_id);
+            const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+
+            const savedFilePathAndUrl = await this.filesService.saveFile(
+                response.data,
+                fileName,
+                fileType,
+            );
+            console.log('savedFilePathAndUrl', savedFilePathAndUrl);
+
+            return { ...savedFilePathAndUrl, fileType };
+        } catch (error) {
+            console.log(error);
+        }
     };
 }
