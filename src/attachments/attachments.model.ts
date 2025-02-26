@@ -54,17 +54,17 @@ export class Attachment extends Model<Attachment, AttachmentCreationAttrs> {
     @Column({ type: DataType.STRING, allowNull: true })
     attachment_type: string;
 
-    @Column({ type: DataType.STRING, allowNull: true })
-    attachment_url: string;
+    @Column({ type: DataType.NUMBER, allowNull: true })
+    attachment_size: number;
 
     @Column({ type: DataType.STRING, allowNull: true })
     attachment_extension: string;
 
     @Column({ type: DataType.JSONB, allowNull: true })
-    attachment_market: object;
+    attachment_payload: object;
 
     @Column({ type: DataType.STRING, allowNull: true, defaultValue: 'pending' }) // Статус загрузки файла
-    status: string; // 'success', 'failed', 'pending'
+    attachment_status: string; // 'success', 'failed', 'pending'
 
     @BelongsTo(() => Card)
     card: Card;

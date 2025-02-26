@@ -4,7 +4,7 @@ import { io, Socket } from 'socket.io-client';
 
 import { customAlphabet } from 'nanoid';
 import { Message } from './messages.model';
-import { CreateMessageDto, MessengerAttachments } from './dto/create-message.dto';
+import { CreateMessageDto } from './dto/create-message.dto';
 import { ChatsService } from 'src/chats/chats.service';
 import { TelegramService } from 'src/messengers/telegram/telegram.service';
 import { EventGateway } from 'src/event/event.gateway';
@@ -15,6 +15,7 @@ import { AttachmentsService } from 'src/attachments/attachments.service';
 import { Upload } from 'vk-io';
 import { FilesService } from 'src/files/files.service';
 import { WaService } from 'src/messengers/wa/wa.service';
+import { MessengerAttachments } from 'src/attachments/dto/attachment.dto';
 
 const nanoid = customAlphabet('abcdef123456789', 24);
 
@@ -85,7 +86,7 @@ export class MessagesService {
 
             if (dto.attachments) {
                 console.log(dto.attachments);
-                await this.attachmentsService.sortAttachments(message.message_id, dto);
+                await this.attachmentsService.sortAttachments(message.message_id as string, dto);
             }
 
             // УВЕДОМЛЕНИЕ ДЛЯ МЕНЕДЖЕРОВ

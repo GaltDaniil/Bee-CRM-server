@@ -58,26 +58,26 @@ export class FilesService {
     }
 
     async saveFile(
-        fileBuffer: Buffer,
+        fileBuffer, // Уточняем тип до Buffer
         fileName: string,
         fileType: string,
-    ): Promise<{ filePath: string; fileUrl: string }> {
-        const fileFolder = 'assets/' + fileType;
-        let fileDir = path.join(__dirname, '../..', fileFolder);
+    ): Promise<{ filePath: string; attachment_src: string }> {
+        const fileFolder = `assets/${fileType}`; // Относительный путь к папке
+        const fileDir = path.join(__dirname, '../..', fileFolder); // Полный путь на сервере
 
+        // Проверяем и создаем директорию асинхронно
         if (!fs.existsSync(fileDir)) {
             fs.mkdirSync(fileDir, { recursive: true });
         }
 
-        const safeFileName = `${Date.now()}_${fileName.replace(/\s+/g, '_')}`;
-        const fileUrl = 'https://beechat.ru/' + fileFolder + '/' + safeFileName;
-        console.log('fileUrl', fileUrl);
+        // Формируем безопасное имя файла
+        const attachment_src = `${fileFolder}/${fileName}`; // Относительный путь для DTO
+        const filePath = path.join(fileDir, fileName); // Полный путь для сохранения
 
-        const filePath = path.join(fileDir, safeFileName);
+        // Сохраняем файл асинхронно
+        await fs.writeFileSync(filePath, fileBuffer);
 
-        fs.writeFileSync(filePath, fileBuffer);
-
-        return { filePath, fileUrl }; // Возвращаем путь к файлу
+        return { filePath, attachment_src }; // Возвращаем полный путь и относительный путь
     }
 
     async tempFiles(file) {

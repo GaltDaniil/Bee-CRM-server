@@ -15,6 +15,7 @@ import {
     VideoAttachment,
 } from 'vk-io';
 import { TelegramService } from 'src/messengers/telegram/telegram.service';
+import { MessengerAttachments } from './dto/attachment.dto';
 
 @Injectable()
 export class AttachmentsProvider {
@@ -129,46 +130,32 @@ export class AttachmentsProvider {
         }
     }
 
-    async telegramAttachmentsParser(attachments) {
-        if (
-            !attachments ||
-            !attachments.files ||
-            !Array.isArray(attachments.files) ||
-            attachments.files.length === 0
-        ) {
+    async telegramAttachmentsParser(attachments: MessengerAttachments) {
+        if (!attachments || attachments.length === 0) {
             console.log('⛔ Нет файлов для обработки');
             return [];
         }
 
         const attachmentData = [];
-        const typeMapping = {
-            photo: 'image',
-            video: 'video',
-            audio: 'audio',
-            document: 'document',
-        };
+
         let params;
 
-        for (const file of attachments.files) {
+        for (const file of attachments) {
             try {
-                let fileName = file.file_name || `${file.file_type}_${Date.now()}`;
-                let { filePath, fileUrl, fileType } =
-                    await this.telegramService.downloadFileFromTg(file);
+                let { filePath, attachment_src } =
+                    await this.telegramService.downloadAndSaveTgFile(file);
 
                 params = {
-                    attachment_name: fileName,
-                    attachment_src: filePath,
-                    attachment_type: fileType,
-                    attachment_url: fileUrl,
-                    attachment_market: {},
+                    attachment_name: file.file_name,
+                    attachment_src: attachment_src,
+                    attachment_extension: file.file_extension,
+                    attachment_type: file.file_type,
                 };
-                console.log('params', params);
                 attachmentData.push(params);
             } catch (error) {
                 console.error(`❌ Ошибка при скачивании файла ${file.file_name}:`, error);
             }
         }
-        console.log('attachmentData', attachmentData);
         return attachmentData;
     }
 }

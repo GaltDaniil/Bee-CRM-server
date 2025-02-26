@@ -5,6 +5,7 @@ import { InjectModel } from '@nestjs/sequelize';
 import { nanoid } from 'nanoid';
 import * as fs from 'fs';
 import { AttachmentsProvider } from './attachments.provider';
+import { CreateMessageDto } from 'src/messages/dto/create-message.dto';
 
 @Injectable()
 export class AttachmentsService {
@@ -14,7 +15,7 @@ export class AttachmentsService {
         private attachmentsProvider: AttachmentsProvider,
     ) {}
 
-    async sortAttachments(message_id, dto) {
+    async sortAttachments(message_id: string, dto: CreateMessageDto) {
         const { attachments, messenger_type, message_from, messenger_id } = dto;
         let attachmentsDataArray;
 

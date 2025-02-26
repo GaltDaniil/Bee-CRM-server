@@ -1,15 +1,37 @@
-import { List } from 'src/lists/lists.model';
-
 export class CreateAttachmentDto {
     attachment_id?: string;
     attachment_name: string;
-    attachment_src: string;
     attachment_type: string;
-    attachment_url: string;
-    attachment_market?: object;
+    attachment_url?: string;
     attachment_extension?: string;
-    attachment_replay?: object;
-    card_id?: string;
-    chat_id?: string;
+    attachment_size?: number;
+    attachment_payload?: AttachmentPayload;
+    attachment_status?: string; // 'success', 'failed', 'pending'
     message_id?: string;
 }
+
+export type AttachmentPayload = {
+    price?: string;
+    title?: string;
+    caption?: string;
+    reply_message_id?: string;
+    reply_text?: string;
+    description?: string;
+    photo_url?: string;
+    duration?: number;
+    width?: number;
+    height?: number;
+};
+
+export type MessengerAttachment = {
+    file_id?: string;
+    file_name: string;
+    file_extension: string;
+    file_type: string;
+    file_size?: number;
+    file_duration?: number;
+    file_src?: string;
+    payload?: AttachmentPayload;
+};
+
+export type MessengerAttachments = MessengerAttachment[];

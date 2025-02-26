@@ -1,5 +1,16 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { VK, Keyboard } from 'vk-io';
+import {
+    VK,
+    Keyboard,
+    MarketAttachment,
+    PhotoAttachment,
+    AudioMessageAttachment,
+    VideoAttachment,
+    DocumentAttachment,
+    StickerAttachment,
+    LinkAttachment,
+    AudioAttachment,
+} from 'vk-io';
 import { ChatsService } from 'src/chats/chats.service';
 import { ContactsService } from 'src/contacts/contacts.service';
 import { FilesService } from 'src/files/files.service';
@@ -14,6 +25,7 @@ import { vkBot } from '../bots.init';
 import * as fs from 'fs';
 import * as path from 'path';
 import { error } from 'console';
+import { MessengerAttachment, MessengerAttachments } from 'src/attachments/dto/attachment.dto';
 const nanoid = customAlphabet('abcdef123456789', 24);
 
 dotenv.config();
@@ -77,6 +89,7 @@ export class VkService {
         const messenger_id = context.senderId.toString();
         let chat_id: string;
         let contact_id: string;
+        let attachments: MessengerAttachments = [];
 
         const isChat = await this.chatsService.getChatByMessengerId(messenger_id);
         if (!isChat) {
@@ -134,6 +147,14 @@ export class VkService {
             chat_id = isChat.chat_id;
         }
 
+        if (context.attachments && context.attachments.length > 0) {
+            attachments = await this.vkAttachmentsParser(
+                context.attachments,
+                context.from,
+                messenger_id,
+            );
+        }
+
         const params = {
             message_value: context.text === undefined ? ' ' : context.text,
             message_type: 'text',
@@ -141,7 +162,7 @@ export class VkService {
             manager_id: '',
             contact_id,
             chat_id,
-            attachments: context.attachments ? context.attachments : [],
+            attachments: attachments,
         };
 
         const message = await this.messagesService.createMessage(params);
@@ -273,59 +294,6 @@ export class VkService {
         return admins.items.some((admin) => String(admin.id) === String(senderId));
     }
 
-    /* async uploadAttachmentToVK(filePath: string, peerId: number, type: 'photo' | 'document') {
-        try {
-            let attachment;
-            if (type === 'photo') {
-                const { id } = await vkBot.upload.messagePhoto({
-                    source: { value: fs.createReadStream(filePath) },
-                });
-                attachment = `photo_${id}`;
-            } else if (type === 'document') {
-                const { id } = await vkBot.upload.messageDocument({
-                    source: { value: fs.createReadStream(filePath) },
-                    peer_id: peerId, // Теперь правильно
-                });
-                attachment = `doc_${id}`;
-            } else {
-                throw new Error(`Unsupported attachment type: ${type}`);
-            }
-
-            return attachment;
-        } catch (error) {
-            console.error(`Ошибка загрузки ${type} в VK:`, error);
-            throw error;
-        } finally {
-            // Удаляем временный файл после загрузки
-            fs.unlink(filePath, (err) => {
-                if (err) console.error(`Ошибка удаления временного файла ${filePath}:`, err);
-            });
-        }
-    } */
-
-    /* private async uploadToVK(filePath: string): Promise<string> {
-        console.log('uploadToVK отработал вот вложение filePath', filePath);
-        // 1. Получаем URL для загрузки
-        const { upload_url } = await vkBot.api.photos.getMessagesUploadServer({});
-        const formData = new FormData();
-        formData.append('photo', fs.createReadStream(filePath));
-
-        // 2. Отправляем фото на сервер VK
-        const uploadResponse = await fetch(upload_url, { method: 'POST', body: formData });
-        const uploadResult = await uploadResponse.json();
-
-        // 3. Сохраняем фото в альбоме сообщений
-        const savedPhotos = await vkBot.api.photos.saveMessagesPhoto(uploadResult);
-        const photo = savedPhotos[0];
-
-        // 4. Формируем ссылку на изображение
-        const imageUrl = `https://vk.com/photo${photo.owner_id}_${photo.id}`;
-
-        console.log('imageUrl вот что получилось', imageUrl);
-
-        return imageUrl;
-    } */
-
     async uploadAndSendDocument(filePath: string, peer_id: number) {
         try {
             console.log('uploadDocument отработал на входе ', filePath);
@@ -355,73 +323,168 @@ export class VkService {
         }
     }
 
-    async uploadFilesToVk() {}
+    async vkAttachmentsParser(
+        attachments,
+        message_from,
+        messenger_id,
+    ): Promise<MessengerAttachments> {
+        console.log('message_from', message_from);
 
-    /* chechAttachments = (attachments, chat_id?, message_id?) => {
-        let attachmentData;
-        for (const attachment of attachments) {
-            if (attachment instanceof MarketAttachment) {
-                const attachmentWithType = attachment as MarketAttachment;
-                const attachment_market = {
-                    price: attachmentWithType.price.text,
-                    title: attachmentWithType.title,
-                    description: attachmentWithType.description,
-                    photo_url: attachmentWithType.thumbnailUrl,
-                };
-                const params = {
-                    attachment_name: attachmentWithType.title,
-                    attachment_src: attachmentWithType.thumbnailUrl,
-                    attachment_type: 'market',
-                    attachment_url: ' ',
-                    attachment_market,
-                    chat_id,
-                    message_id,
-                };
+        try {
+            const mediaConfig = {
+                photo: { type: 'image', defaultExt: '.jpg', pickLargest: true },
+                video: { type: 'video', defaultExt: '.mp4' },
+                audio: { type: 'audio', defaultExt: '.mp3' },
+                audio_message: { type: 'audio', defaultExt: '.mp3' },
+                doc: { type: 'document', defaultExt: '' },
+                market: { type: 'market', defaultExt: '.jpg' },
+                sticker: { type: 'sticker', defaultExt: '.png' },
+                link: { type: 'link', defaultExt: '' },
+            };
+            const result: MessengerAttachment[] = [];
+            let params: MessengerAttachment;
 
-                attachmentData = this.attachmentsService.createAttachment(params, '');
-            } else if (attachment instanceof PhotoAttachment) {
-                console.log('Да, это фоточка');
-                const attachmentWithType = attachment as PhotoAttachment;
-                const attachment_url = attachment.sizes.find((size) => size.type === 'x')?.url; // Выбираем URL среднего размера изображения
-                const params = {
-                    attachment_name: attachmentWithType.id.toString(),
-                    attachment_src: attachment_url,
-                    attachment_type: 'image',
-                    attachment_url,
-                    attachment_market: {},
-                    chat_id,
-                    message_id,
-                };
-                attachmentData = this.attachmentsService.createAttachment(params, '');
-                
-            } else if (attachment instanceof AudioMessageAttachment) {
-                console.log('Да, это голосовое');
-                // Если вложение - аудио
-                // Обработка аудиофайла, сохранение на сервере и т.д.
-            } else if (attachment instanceof VideoAttachment) {
-                console.log('Да, видео сообщение');
-                // Если вложение - аудио
-                // Обработка аудиофайла, сохранение на сервере и т.д.
-            } else if (attachment instanceof DocumentAttachment) {
-                console.log('Да, это сообщение с документом');
-                // Если вложение - аудио
-                // Обработка аудиофайла, сохранение на сервере и т.д.
-            } else if (attachment instanceof StickerAttachment) {
-                console.log('Да, стикер');
-                // Если вложение - аудио
-                // Обработка аудиофайла, сохранение на сервере и т.д.
-            } else if (attachment instanceof LinkAttachment) {
-                console.log('Да, это ссылка');
-                // Если вложение - аудио
-                // Обработка аудиофайла, сохранение на сервере и т.д.
-            } else if (attachment instanceof AudioAttachment) {
-                console.log('Да, аудио сообщение');
-                // Если вложение - аудио
-                // Обработка аудиофайла, сохранение на сервере и т.д.
+            for (const attachment of attachments) {
+                if (attachment instanceof MarketAttachment) {
+                    params = {
+                        file_id: `market_${attachment.id}_${attachment.ownerId}`,
+                        file_name: attachment.title,
+                        file_extension: '.jpg', // Обычно thumbnail — это изображение
+                        file_type: 'market',
+                        file_size: undefined,
+                        payload: {
+                            price: attachment.price.text,
+                            title: attachment.title,
+                            description: attachment.description,
+                            photo_url: attachment.thumbnailUrl,
+                        },
+                    };
+                } else if (attachment instanceof PhotoAttachment) {
+                    const largestSize = attachment.sizes.reduce(
+                        (max, size) => (size.width > max.width ? size : max),
+                        attachment.sizes[0],
+                    );
+                    params = {
+                        file_id: `photo_${attachment.id}_${attachment.ownerId}`,
+                        file_name: `photo_${attachment.id}_${attachment.ownerId}.jpg`,
+                        file_extension: '.jpg',
+                        file_type: 'image',
+                        file_size: largestSize.width * largestSize.height, // Примерный размер
+                        payload: {
+                            width: largestSize.width,
+                            height: largestSize.height,
+                        },
+                    };
+                } else if (attachment instanceof AudioMessageAttachment) {
+                    params = {
+                        file_id: `audio_message_${attachment.id}_${attachment.ownerId}`,
+                        file_name: `audio_message_${attachment.id}_${attachment.ownerId}.mp3`,
+                        file_extension: '.mp3',
+                        file_type: 'audio',
+                        file_size: attachment.duration * 32000, // Примерный размер (320kbps)
+                        payload: {
+                            duration: attachment.duration,
+                        },
+                    };
+                } else if (attachment instanceof VideoAttachment) {
+                    /* params = {
+                        file_id: `video_${attachment.id}_${attachment.ownerId}`,
+                        file_name:
+                            attachment.title || `video_${attachment.id}_${attachment.ownerId}.mp4`,
+                        file_extension: '.mp4',
+                        file_type: 'video',
+                        file_size: attachment.fileSize,
+                        payload: {
+                            duration: attachment.duration,
+                            width: attachment.width,
+                            height: attachment.height,
+                        },
+                    }; */
+                } else if (attachment instanceof DocumentAttachment) {
+                    const fileExt =
+                        attachment.extension || this.getFileExtensionFromUrl(attachment.url) || '';
+                    params = {
+                        file_id: `doc_${attachment.id}_${attachment.ownerId}`,
+                        file_name: attachment.title,
+                        file_extension: fileExt,
+                        file_type: 'document',
+                        file_size: attachment.size,
+                        payload: {},
+                    };
+                } else if (attachment instanceof StickerAttachment) {
+                    params = {
+                        file_id: `sticker_${attachment.id}`,
+                        file_name: `sticker_${attachment.id}.png`,
+                        file_extension: '.png',
+                        file_type: 'sticker',
+                        file_size: undefined,
+                        payload: {},
+                    };
+                } else if (attachment instanceof LinkAttachment) {
+                    params = {
+                        file_id: `link_${attachment.url}`,
+                        file_name: attachment.title || attachment.url,
+                        file_extension: '',
+                        file_type: 'link',
+                        file_size: undefined,
+                        payload: {
+                            caption: attachment.description || attachment.title,
+                        },
+                    };
+                } else if (attachment instanceof AudioAttachment) {
+                    params = {
+                        file_id: `audio_${attachment.id}_${attachment.ownerId}`,
+                        file_name:
+                            attachment.title || `audio_${attachment.id}_${attachment.ownerId}.mp3`,
+                        file_extension: '.mp3',
+                        file_type: 'audio',
+                        file_size: undefined,
+                        payload: {
+                            duration: attachment.duration,
+                        },
+                    };
+                } else if (message_from === 'crm') {
+                    console.log('Да, сообщение получено из CRM');
+
+                    const tempFilePath = await this.filesService.tempFiles(attachment);
+                    console.log('tempFilePath', tempFilePath);
+                    const { url, extension } = await this.uploadAndSendDocument(
+                        tempFilePath,
+                        messenger_id,
+                    );
+
+                    params = {
+                        file_name: attachment.originalname,
+                        file_src: url,
+                        file_type: 'document',
+                        file_extension: attachment.extension || extension,
+                    };
+                }
+
+                if (params) {
+                    result.push(params);
+                }
             }
-
-            // Другие типы вложений можно обработать аналогичным образом
-            return attachmentData;
+            return result;
+        } catch (error) {
+            console.error('Ошибка при разборе вложений:', error);
+            throw error;
         }
-    }; */
+    }
+    private getFileExtensionFromUrl(url: string): string {
+        const match = url.match(/\.([a-z0-9]+)(?:[?#]|$)/i);
+        return match ? `.${match[1].toLowerCase()}` : '';
+    }
+
+    private getFileExtension(mimeType: string, defaultExt: string): string {
+        const mimeMap: { [key: string]: string } = {
+            'image/jpeg': '.jpg',
+            'image/png': '.png',
+            'audio/mpeg': '.mp3',
+            'audio/ogg': '.ogg',
+            'video/mp4': '.mp4',
+            'application/pdf': '.pdf',
+        };
+        return mimeMap[mimeType] || defaultExt || '';
+    }
 }

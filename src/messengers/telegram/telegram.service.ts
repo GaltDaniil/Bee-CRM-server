@@ -16,6 +16,7 @@ import { tgBot } from '../bots.init';
 import { AttachmentsService } from 'src/attachments/attachments.service';
 import { MessagesService } from 'src/messages/messages.service';
 import { autoresponder } from '../chatbot/autoresponder';
+import { MessengerAttachment, MessengerAttachments } from 'src/attachments/dto/attachment.dto';
 const nanoid = customAlphabet('abcdef123456789', 24);
 
 dotenv.config();
@@ -127,10 +128,7 @@ export class TelegramService {
         let contact_photo_url: string;
         let message_value = msg.text || ' '; // Теперь текст всегда есть
         let message;
-        const attachments = {
-            files: [],
-            files_type: '',
-        };
+
         let params;
 
         const isChat = await this.chatsService.getChatByMessengerId(messenger_id);
@@ -168,45 +166,8 @@ export class TelegramService {
             contact_id = isChat.contact_id;
         }
 
-        const mediaTypes = [
-            { key: 'photo', type: 'photo', ext: '.jpg' },
-            { key: 'document', type: 'document', ext: '' },
-            { key: 'audio', type: 'audio', ext: '.mp3' },
-            { key: 'voice', type: 'voice', ext: '.ogg' },
-            { key: 'video', type: 'video', ext: '.mp4' },
-            { key: 'video_note', type: 'video', ext: '.mp4' },
-        ];
-
-        for (const media of mediaTypes) {
-            if (msg[media.key]) {
-                let filesArray = Array.isArray(msg[media.key]) ? msg[media.key] : [msg[media.key]];
-
-                // Если это фото — выбираем самую большую версию
-                if (media.key === 'photo') {
-                    filesArray = [
-                        filesArray.reduce(
-                            (max, photo) => (photo.file_size > max.file_size ? photo : max),
-                            filesArray[0],
-                        ),
-                    ];
-                }
-
-                // Добавляем файлы в массив
-                for (const file of filesArray) {
-                    attachments.files.push({
-                        file_id: file.file_id,
-                        file_name: file.file_name || `${media.key}_${file.file_id}`,
-                        file_type: media.type,
-                        mime_type: file.mime_type || '',
-                    });
-                }
-                console.log('filesArray после создания', filesArray);
-
-                attachments.files_type = media.type;
-            }
-        }
-
-        const message_type = attachments.files_type.length > 0 ? 'media' : 'text';
+        const attachments = await this.parseAttachments(msg);
+        const message_type = attachments.length > 0 ? 'media' : 'text';
 
         params = {
             message_value,
@@ -245,31 +206,115 @@ export class TelegramService {
         return '';
     };
 
-    downloadFileFromTg = async (file) => {
+    downloadAndSaveTgFile = async (file: MessengerAttachment) => {
         try {
             let fileType = file.file_type;
-
             let fileName = file.file_name || `${fileType}_${Date.now()}`;
-
-            // Если это фото и нет mime_type, предполагаем JPG
-            if (fileType === 'photo' && !file.mime_type) {
-                fileName = fileName.endsWith('.jpg') ? fileName : `${fileName}.jpg`;
-                fileType = 'image';
-            }
 
             let fileUrl = await tgBot.getFileLink(file.file_id);
             const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
 
-            const savedFilePathAndUrl = await this.filesService.saveFile(
+            const { attachment_src, filePath } = await this.filesService.saveFile(
                 response.data,
                 fileName,
                 fileType,
             );
-            console.log('savedFilePathAndUrl', savedFilePathAndUrl);
 
-            return { ...savedFilePathAndUrl, fileType };
+            return { filePath, attachment_src, fileType };
         } catch (error) {
             console.log(error);
         }
     };
+
+    private async parseAttachments(msg: TelegramBot.Message) {
+        try {
+            type MediaConfig = {
+                [key: string]: {
+                    type: string;
+                    defaultExt: string;
+                    pickLargest?: boolean;
+                };
+            };
+            const mediaConfig: MediaConfig = {
+                photo: { type: 'image', defaultExt: '.jpg', pickLargest: true },
+                document: { type: 'document', defaultExt: '' },
+                audio: { type: 'audio', defaultExt: '.mp3' },
+                voice: { type: 'audio', defaultExt: '.ogg' },
+                video: { type: 'video', defaultExt: '.mp4' },
+                video_note: { type: 'video', defaultExt: '.mp4' },
+            };
+
+            let attachments: MessengerAttachments = [];
+
+            for (const [key, config] of Object.entries(mediaConfig)) {
+                if (msg[key]) {
+                    let filesArray = Array.isArray(msg[key]) ? msg[key] : [msg[key]];
+
+                    if (config.pickLargest && filesArray.length > 1) {
+                        filesArray = [
+                            filesArray.reduce(
+                                (max, file) => (file.file_size > max.file_size ? file : max),
+                                filesArray[0],
+                            ),
+                        ];
+                    }
+
+                    for (const file of filesArray) {
+                        const fileExt = this.getFileExtension(file.mime_type, config.defaultExt);
+
+                        // Создаем имя файла и проверяем есть ли в нем расширение.
+                        let fileName = file.file_name || `${config.type}_${file.file_id}`;
+                        if (fileName && !fileName.endsWith(fileExt) && fileExt) {
+                            fileName += fileExt;
+                        }
+
+                        // Добавляем duration для аудио
+                        const fileData: MessengerAttachment = {
+                            file_id: file.file_id,
+                            file_name: fileName as string,
+                            file_extension: fileExt,
+                            file_type: config.type,
+                            file_size: file.file_size,
+
+                            payload: {
+                                duration: undefined, // По умолчанию undefined
+                            },
+                        };
+
+                        if (file.duration !== undefined) fileData.payload.duration = file.duration;
+                        if (file.width !== undefined) fileData.payload.width = file.width;
+                        if (file.height !== undefined) fileData.payload.height = file.height;
+                        if (file.caption) fileData.payload.caption = file.caption;
+                        // Добавляем reply из msg, если есть
+                        if (msg.reply_to_message) {
+                            fileData.payload.reply_message_id =
+                                msg.reply_to_message.message_id.toString();
+                            fileData.payload.reply_text = msg.reply_to_message.text;
+                        }
+
+                        attachments.push(fileData);
+                    }
+                }
+            }
+
+            return attachments;
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
+    // Вспомогательная функция для определения расширения
+    private getFileExtension(mimeType: string | undefined, defaultExt: string): string {
+        if (!mimeType) return defaultExt;
+        const mimeMap = {
+            '': '.jpg',
+            'image/jpeg': '.jpg',
+            'image/png': '.png',
+            'audio/mpeg': '.mp3',
+            'audio/ogg': '.ogg',
+            'video/mp4': '.mp4',
+            'application/pdf': '.pdf',
+        };
+        return mimeMap[mimeType] || defaultExt || '';
+    }
 }

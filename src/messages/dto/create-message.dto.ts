@@ -1,9 +1,4 @@
-import { Attachment } from 'src/attachments/attachments.model';
-
-export class MessengerAttachments {
-    files: [];
-    files_type: string;
-}
+import { MessengerAttachment } from 'src/attachments/dto/attachment.dto';
 
 export class CreateMessageDto {
     readonly contact_email?: string;
@@ -18,5 +13,5 @@ export class CreateMessageDto {
     readonly messenger_id?: string;
     readonly contact_id?: string;
     readonly manager_id?: string;
-    readonly attachments?: MessengerAttachments;
+    readonly attachments?: MessengerAttachment[];
 }
