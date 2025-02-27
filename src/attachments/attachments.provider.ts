@@ -142,20 +142,42 @@ export class AttachmentsProvider {
 
         for (const file of attachments) {
             try {
-                let { filePath, attachment_src } =
-                    await this.telegramService.downloadAndSaveTgFile(file);
+                if (file.file_type === 'reply') {
+                    console.log('Да это reply');
+                    params = {
+                        attachment_name: 'reply',
+                        attachment_type: 'reply',
+                        attachment_src: 'reply',
+                        attachment_payload: {
+                            reply_message_id: file.payload.reply_message_id,
+                            reply_text: file.payload.reply_text,
+                            reply_from: {
+                                id: file.payload.reply_from.id,
+                                first_name: file.payload.reply_from.first_name,
+                                username: file.payload.reply_from.username,
+                                is_bot: file.payload.reply_from.is_bot,
+                            },
+                        },
+                    };
+                    console.log('reply params', params);
+                } else {
+                    let { filePath, attachment_src } =
+                        await this.telegramService.downloadAndSaveTgFile(file);
 
-                params = {
-                    attachment_name: file.file_name,
-                    attachment_src: attachment_src,
-                    attachment_extension: file.file_extension,
-                    attachment_type: file.file_type,
-                };
+                    params = {
+                        attachment_name: file.file_name,
+                        attachment_src: attachment_src,
+                        attachment_extension: file.file_extension,
+                        attachment_type: file.file_type,
+                    };
+                }
+
                 attachmentData.push(params);
             } catch (error) {
                 console.error(`❌ Ошибка при скачивании файла ${file.file_name}:`, error);
             }
         }
+        console.log('attachmentData в telegramAttachmentsParser', attachmentData);
         return attachmentData;
     }
 }

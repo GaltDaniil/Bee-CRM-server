@@ -1,8 +1,8 @@
 export class CreateAttachmentDto {
     attachment_id?: string;
-    attachment_name: string;
+    attachment_name?: string;
     attachment_type: string;
-    attachment_url?: string;
+    attachment_src?: string;
     attachment_extension?: string;
     attachment_size?: number;
     attachment_payload?: AttachmentPayload;
@@ -16,6 +16,12 @@ export type AttachmentPayload = {
     caption?: string;
     reply_message_id?: string;
     reply_text?: string;
+    reply_from?: {
+        id: string;
+        first_name: string;
+        username: string;
+        is_bot: boolean;
+    };
     description?: string;
     photo_url?: string;
     duration?: number;
@@ -25,8 +31,8 @@ export type AttachmentPayload = {
 
 export type MessengerAttachment = {
     file_id?: string;
-    file_name: string;
-    file_extension: string;
+    file_name?: string;
+    file_extension?: string;
     file_type: string;
     file_size?: number;
     file_duration?: number;

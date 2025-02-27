@@ -40,7 +40,7 @@ export class AttachmentsService {
                 console.error(`Неизвестный тип мессенджера: ${messenger_type}`);
                 return [];
         }
-
+        console.log('attachmentsDataArray в sortAttachments', attachmentsDataArray);
         // Если массив пустой, возвращаем пустой результат
         if (!attachmentsDataArray || attachmentsDataArray.length === 0) {
             console.warn('Массив вложений пуст.');
@@ -56,6 +56,7 @@ export class AttachmentsService {
                     message_id,
                     ...attachmentData, // Передаем данные вложения
                 });
+                console.log('Созданный attachments', createdAttachment);
                 if (createdAttachment) {
                     createdAttachments.push(createdAttachment);
                 }

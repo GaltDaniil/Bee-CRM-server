@@ -246,6 +246,27 @@ export class TelegramService {
 
             let attachments: MessengerAttachments = [];
 
+            if (msg.reply_to_message) {
+                const reply = msg.reply_to_message;
+                const replyData: MessengerAttachment = {
+                    file_type: 'reply',
+                    payload: {
+                        reply_message_id: reply.message_id.toString(),
+                        reply_text: reply.text,
+                        reply_from: {
+                            id: reply.from.id.toString(),
+                            first_name: reply.from.first_name,
+                            username: reply.from.username,
+                            is_bot: reply.from.is_bot,
+                        },
+                        // Не парсим reply_attachments, так как вложения уже есть в базе
+                    },
+                };
+
+                attachments.push(replyData);
+                return attachments;
+            }
+
             for (const [key, config] of Object.entries(mediaConfig)) {
                 if (msg[key]) {
                     let filesArray = Array.isArray(msg[key]) ? msg[key] : [msg[key]];
@@ -297,6 +318,18 @@ export class TelegramService {
                 }
             }
 
+            // Обработка forward (если есть)
+            /* if (msg.forward_from_message_id || msg.forward_from_chat) {
+            // Предположим, что forward содержит полные данные в msg
+            const forwardAttachments = await this.parseTelegramAttachments({
+                ...msg,
+                message_id: msg.forward_from_message_id || msg.message_id,
+                chat: msg.forward_from_chat || msg.chat,
+                forward_from_message_id: undefined,
+                forward_from_chat: undefined,
+            });
+            attachments.push(...forwardAttachments);
+        } */
             return attachments;
         } catch (error) {
             console.log(error);
