@@ -8,4 +8,5 @@ export class WaFromGetcourse {
     message_type: string;
     messenger_type: string;
     messenger_id: string;
+    attachments: any;
 }

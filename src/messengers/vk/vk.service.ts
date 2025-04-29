@@ -24,7 +24,7 @@ import { customAlphabet } from 'nanoid';
 import { vkBot } from '../bots.init';
 import * as fs from 'fs';
 import * as path from 'path';
-import { error } from 'console';
+import { error, log } from 'console';
 import { MessengerAttachment, MessengerAttachments } from 'src/attachments/dto/attachment.dto';
 const nanoid = customAlphabet('abcdef123456789', 24);
 
@@ -80,100 +80,180 @@ export class VkService {
     }
 
     newMessageHandler = async (context) => {
-        console.log('messageHandler', context);
+        try {
+            console.log('messageHandler', context);
 
-        if (context.text !== undefined) {
-            if (context.text.length < 2 && context.attachment.length == 0) return;
-            if (context.text === 'начать' || context.text === 'Начать') return;
-        }
-        const messenger_id = context.senderId.toString();
-        let chat_id: string;
-        let contact_id: string;
-        let attachments: MessengerAttachments = [];
-
-        const isChat = await this.chatsService.getChatByMessengerId(messenger_id);
-        if (!isChat) {
-            let account_id: string = 'ecfafe4bc756935e17d93bec';
-
-            let contact_photo_url: string;
-            let from_url;
-
-            if (context.referralValue) {
-                const parsedParams = await urlParser(context.referralValue);
-                account_id = parsedParams.account_id || 'ecfafe4bc756935e17d93bec';
-                from_url = parsedParams.from_url || '';
+            if (context.text !== undefined) {
+                if (context.text.length < 2 && context.attachment.length == 0) return;
+                if (context.text === 'начать' || context.text === 'Начать') return;
             }
-            const vkData = await this.VKBot.api.users.get({
-                user_ids: [context.senderId],
-                fields: ['photo_200_orig', 'nickname'],
-            });
-            const { photo_200_orig, first_name, last_name, nickname } = vkData[0];
+            const messenger_id = context.senderId.toString();
+            let chat_id: string;
+            let contact_id: string;
+            let attachments: MessengerAttachments = [];
 
-            const contact_name: string = first_name + ' ' + last_name || '';
-            const messenger_username: string = nickname || '';
+            const isChat = await this.chatsService.getChatByMessengerId(messenger_id);
+            if (!isChat) {
+                let account_id: string = 'ecfafe4bc756935e17d93bec';
 
-            const response = await axios.get(photo_200_orig, { responseType: 'arraybuffer' });
-            const avatarFile = Buffer.from(response.data, 'binary');
+                let contact_photo_url: string;
+                let from_url;
 
-            const fileName = await this.filesService.saveAvatarFromMessenger(
-                avatarFile,
-                messenger_id,
-            );
-            contact_photo_url = fileName;
+                if (context.referralValue) {
+                    const parsedParams = await urlParser(context.referralValue);
+                    account_id = parsedParams.account_id || 'ecfafe4bc756935e17d93bec';
+                    from_url = parsedParams.from_url || '';
+                }
+                const vkData = await vkBot.api.users.get({
+                    user_ids: [context.senderId],
+                    fields: ['photo_200_orig', 'nickname'],
+                });
+                const { photo_200_orig, first_name, last_name, nickname } = vkData[0];
+
+                const contact_name: string = first_name + ' ' + last_name || '';
+                const messenger_username: string = nickname || '';
+
+                const response = await axios.get(photo_200_orig, { responseType: 'arraybuffer' });
+                const avatarFile = Buffer.from(response.data, 'binary');
+
+                const fileName = await this.filesService.saveAvatarFromMessenger(
+                    avatarFile,
+                    messenger_id,
+                );
+                contact_photo_url = fileName;
+
+                const params = {
+                    account_id,
+                    contact_name,
+                    contact_photo_url,
+                    contact_vk_status: true,
+                };
+                const newContact: Contact = await this.contactsService.createContact(params);
+
+                if (newContact) {
+                    contact_id = newContact.contact_id;
+                    const params = {
+                        contact_id,
+                        messenger_id,
+                        messenger_type: 'vk',
+                        messenger_username,
+                        from_url,
+                    };
+
+                    const newChat = await this.chatsService.createChat(params);
+                    chat_id = newChat.chat_id;
+                }
+            } else {
+                contact_id = isChat.contact_id;
+                chat_id = isChat.chat_id;
+            }
+
+            /* if (context.attachments && context.attachments.length > 0) {
+                attachments = await this.parserAndFormatAttachments(
+                    context.attachments,
+                    context.senderId,
+                    messenger_id,
+                );
+            } */
 
             const params = {
-                account_id,
-                contact_name,
-                contact_photo_url,
-                contact_vk_status: true,
+                message_value: context.text === undefined ? ' ' : context.text,
+                message_type: 'text',
+                messenger_type: 'vk',
+                message_from: 'vk',
+                manager_id: '',
+                contact_id,
+                chat_id,
+                attachments: context.attachments,
             };
-            const newContact: Contact = await this.contactsService.createContact(params);
 
-            if (newContact) {
-                contact_id = newContact.contact_id;
-                const params = {
-                    contact_id,
-                    messenger_id,
-                    messenger_type: 'vk',
-                    messenger_username,
-                    from_url,
-                };
+            const message = await this.messagesService.createMessage(params);
 
-                const newChat = await this.chatsService.createChat(params);
-                chat_id = newChat.chat_id;
-            }
-        } else {
-            contact_id = isChat.contact_id;
-            chat_id = isChat.chat_id;
-        }
+            this.eventGateway.ioServer.emit('update', message);
 
-        if (context.attachments && context.attachments.length > 0) {
-            attachments = await this.vkAttachmentsParser(
-                context.attachments,
-                context.from,
-                messenger_id,
-            );
-        }
+            await this.marketAutoAnswer(context);
 
-        const params = {
-            message_value: context.text === undefined ? ' ' : context.text,
-            message_type: 'text',
-            messenger_type: 'vk',
-            manager_id: '',
-            contact_id,
-            chat_id,
-            attachments: attachments,
-        };
-
-        const message = await this.messagesService.createMessage(params);
-
-        this.eventGateway.ioServer.emit('update', message);
-
-        /* const answerText = autoresponder(message.createdAt); */
-        /* if (answerText) {
+            /* const answerText = autoresponder(message.createdAt); */
+            /* if (answerText) {
             await this.messagesService.createMessage({ ...params, message_value: answerText });
         } */
+        } catch (error) {
+            console.log(error);
+        }
     };
+
+    async marketAutoAnswer(context) {
+        const texts = [
+            'Здравствуйте! Пришлёте видео?',
+            'Здравствуйте! Меня заинтересовал данный товар.',
+            'Здравствуйте! Как оформить заказ?',
+            'Здравствуйте! Когда можно посмотреть?',
+        ];
+        const mainText = 'Создать заказ вы можете по ссылке: ';
+        const links = {
+            'Кухня нутрициолога': 'http://vk.com/app5898182_-212085097#s=3145890',
+            'Беременные и молодые мамы: организация рациона и тренировок':
+                'https://linnik-fitness.ru/widgets?course_name=pregnancy_moms_self&utm_sourse=vk',
+            'Расстройство пищевого поведения (РПП)':
+                'https://linnik-fitness.ru/widgets?course_name=module_eating_disorders&utm_sourse=vk',
+            'Быстрый старт': 'https://vk.com/app5898182_-212085097#s=3145887',
+            'Нутрициолог PRO': 'https://linnik-fitness.ru/nutrition3?utm_sourse=vk',
+            'Интерпретация медицинских анализов. БАДы':
+                'https://linnik-fitness.ru/widgets?course_name=module_medical_analysis&utm_sourse=vk',
+            'Беременность и грудное вскармливание':
+                'http://linnik-fitness.ru/widgets?course_name=module_pregnancy_feeding&utm_sourse=vk',
+            'Питание для людей с диабетом':
+                'https://linnik-fitness.ru/widgets?course_name=module_diabetes_nutrition&utm_sourse=vk',
+            'Детское питание':
+                'https://linnik-fitness.ru/widgets?course_name=module_kids_nutrition&utm_sourse=vk',
+            'Организация питания для всей семьи':
+                'https://linnik-fitness.ru/widgets?course_name=module_family_nutrition&utm_sourse=vk',
+            'Питание при заболеваниях ЖКТ':
+                'https://linnik-fitness.ru/widgets?course_name=module_gastro_nutrition&utm_sourse=vk',
+            'Богатый фитнес-тренер': 'https://linnik-fitness.ru/bft?utm_sourse=vk',
+            'Спортивное тело':
+                'https://linnik-fitness.ru/widgets?course_name=sport_body_light&utm_sourse=vk',
+            'Онлайн-курс Нутрициолог':
+                'https://linnik-fitness.ru/widgets?course_name=nutritionist_self&utm_sourse=vk',
+            'Закрытый клуб ФИТНЕС-ТРЕНЕРОВ И НУТРИЦИОЛОГОВ':
+                'https://linnik-fitness.ru/club?utm_sourse=vk',
+            'Все о теле и движении':
+                'https://linnik-fitness.ru/widgets?course_name=body_movement_self&utm_sourse=vk',
+            'Онлайн-тренер':
+                'https://linnik-fitness.ru/widgets?course_name=online_trainer_self&utm_sourse=vk',
+            'Мастер женского фитнеса':
+                'https://linnik-fitness.ru/widgets?course_name=women_fitness_self&utm_sourse=vk',
+            'Курс Инструктор по стретчингу':
+                'https://linnik-fitness.ru/widgets?course_name=stretching_trainer_self&utm_source=vk',
+            'Степ-аэробика':
+                'https://linnik-fitness.ru/widgets?course_name=step_aerobics&utm_source=vk',
+            'Инструктор тренажерного зала':
+                'https://linnik-fitness.ru/widgets?course_name=tz_trainer_self&utm_source=vk',
+            'Методист тренировочных программ':
+                'https://linnik-fitness.ru/widgets?course_name=methodologist_tp_self&utm_source=vk',
+            'Силовой тренинг':
+                'https://linnik-fitness.ru/Widgets?course_name=strength_trainer_self&utm_source=vk',
+            'Миофасциальный релиз':
+                'https://linnik-fitness.ru/widgets?course_name=mfr_self&utm_source=vk',
+            'Йога Vinyasa и Yin':
+                'https://linnik-fitness.ru/widgets?course_name=yoga_series_light&utm_source=vk',
+            'Сборник чек-листов':
+                'https://linnik-fitness.ru/widgets?course_name=guides_collection&utm_source=vk',
+            'Сборник курсов':
+                'https://linnik-fitness.ru/widgets?course_name=course_collection&utm_source=vk',
+        };
+        const randomId = Math.floor(Math.random() * 1000000);
+
+        if (texts.includes(context.text)) {
+            const title = context.attachments[0].payload.title;
+            const answer = mainText + links[title];
+            await vkBot.api.messages.send({
+                user_id: Number(context.senderId),
+                message: answer,
+                random_id: randomId,
+            });
+        }
+    }
 
     replyMessageHandler = async (context) => {
         console.log('replyMessageHandler', context);
@@ -323,35 +403,27 @@ export class VkService {
         }
     }
 
-    async vkAttachmentsParser(
+    async parserAndFormatAttachments(
         attachments,
-        message_from,
+        senderId,
         messenger_id,
     ): Promise<MessengerAttachments> {
-        console.log('message_from', message_from);
+        console.log('vkAttachmentsParser, senderId', senderId);
 
         try {
-            const mediaConfig = {
-                photo: { type: 'image', defaultExt: '.jpg', pickLargest: true },
-                video: { type: 'video', defaultExt: '.mp4' },
-                audio: { type: 'audio', defaultExt: '.mp3' },
-                audio_message: { type: 'audio', defaultExt: '.mp3' },
-                doc: { type: 'document', defaultExt: '' },
-                market: { type: 'market', defaultExt: '.jpg' },
-                sticker: { type: 'sticker', defaultExt: '.png' },
-                link: { type: 'link', defaultExt: '' },
-            };
             const result: MessengerAttachment[] = [];
             let params: MessengerAttachment;
 
             for (const attachment of attachments) {
                 if (attachment instanceof MarketAttachment) {
+                    console.log('Прилетела с ВК - товар');
                     params = {
                         file_id: `market_${attachment.id}_${attachment.ownerId}`,
                         file_name: attachment.title,
                         file_extension: '.jpg', // Обычно thumbnail — это изображение
                         file_type: 'market',
                         file_size: undefined,
+                        file_src: attachment.thumbnailUrl,
                         payload: {
                             price: attachment.price.text,
                             title: attachment.title,
@@ -360,6 +432,7 @@ export class VkService {
                         },
                     };
                 } else if (attachment instanceof PhotoAttachment) {
+                    console.log('Прилетела с ВК - фоточка');
                     const largestSize = attachment.sizes.reduce(
                         (max, size) => (size.width > max.width ? size : max),
                         attachment.sizes[0],
@@ -370,23 +443,27 @@ export class VkService {
                         file_extension: '.jpg',
                         file_type: 'image',
                         file_size: largestSize.width * largestSize.height, // Примерный размер
+                        file_src: largestSize.url,
                         payload: {
                             width: largestSize.width,
                             height: largestSize.height,
                         },
                     };
                 } else if (attachment instanceof AudioMessageAttachment) {
+                    console.log('Прилетела с ВК - войз');
                     params = {
                         file_id: `audio_message_${attachment.id}_${attachment.ownerId}`,
                         file_name: `audio_message_${attachment.id}_${attachment.ownerId}.mp3`,
                         file_extension: '.mp3',
                         file_type: 'audio',
+                        file_src: attachment.url,
                         file_size: attachment.duration * 32000, // Примерный размер (320kbps)
                         payload: {
                             duration: attachment.duration,
                         },
                     };
                 } else if (attachment instanceof VideoAttachment) {
+                    console.log('Прилетела с ВК - видео');
                     /* params = {
                         file_id: `video_${attachment.id}_${attachment.ownerId}`,
                         file_name:
@@ -401,6 +478,7 @@ export class VkService {
                         },
                     }; */
                 } else if (attachment instanceof DocumentAttachment) {
+                    console.log('Прилетела с ВК - док');
                     const fileExt =
                         attachment.extension || this.getFileExtensionFromUrl(attachment.url) || '';
                     params = {
@@ -409,9 +487,11 @@ export class VkService {
                         file_extension: fileExt,
                         file_type: 'document',
                         file_size: attachment.size,
+                        file_src: attachment.url,
                         payload: {},
                     };
                 } else if (attachment instanceof StickerAttachment) {
+                    console.log('Прилетела с ВК - стикер');
                     params = {
                         file_id: `sticker_${attachment.id}`,
                         file_name: `sticker_${attachment.id}.png`,
@@ -421,6 +501,7 @@ export class VkService {
                         payload: {},
                     };
                 } else if (attachment instanceof LinkAttachment) {
+                    console.log('Прилетела с ВК - ссылка');
                     params = {
                         file_id: `link_${attachment.url}`,
                         file_name: attachment.title || attachment.url,
@@ -432,6 +513,7 @@ export class VkService {
                         },
                     };
                 } else if (attachment instanceof AudioAttachment) {
+                    console.log('Прилетела с ВК - аудио');
                     params = {
                         file_id: `audio_${attachment.id}_${attachment.ownerId}`,
                         file_name:
@@ -443,8 +525,8 @@ export class VkService {
                             duration: attachment.duration,
                         },
                     };
-                } else if (message_from === 'crm') {
-                    console.log('Да, сообщение получено из CRM');
+                } /* else if (message_from === 'crm') {
+                    console.log('Да, сообщение в ВК получено из CRM');
 
                     const tempFilePath = await this.filesService.tempFiles(attachment);
                     console.log('tempFilePath', tempFilePath);
@@ -459,7 +541,7 @@ export class VkService {
                         file_type: 'document',
                         file_extension: attachment.extension || extension,
                     };
-                }
+                } */
 
                 if (params) {
                     result.push(params);

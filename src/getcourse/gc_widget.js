@@ -2,7 +2,7 @@ window.addEventListener('message', (event) => {
     const name_list = {
         step_aerobics: 'Онлайн-курс СТЕП-АЭРОБИКА',
         strength_trainer_self: 'ИНСТРУКТОР ПО СИЛОВОМУ ТРЕНИНГУ. Тариф «Сам»',
-        mfr_self: 'МИОФАСЦИАЛЬНЫЙ РЕЛИЗ. Тариф «Сам»',
+        mfr_self: 'МИОФАСЦИАЛЬНЫЙ РЕЛИЗ. Тариф«Сам»',
         methodologist_tp_self: 'МЕТОДИСТ ТП. Тариф «Сам»',
         women_fitness_self: 'МАСТЕР ЖЕНСКОГО ФИТНЕСА. Тариф «Сам»',
         stretching_trainer_self: 'ИНСТРУКТОР ПО СТРЕТЧИНГУ. Тариф «Сам»',

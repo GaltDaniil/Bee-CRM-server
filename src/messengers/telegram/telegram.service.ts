@@ -126,7 +126,7 @@ export class TelegramService {
         let contact_id: string;
         let chat_id: string;
         let contact_photo_url: string;
-        let message_value = msg.text || ' '; // Теперь текст всегда есть
+        let message_value = msg.text || msg.caption || ' '; // Теперь текст всегда есть
         let message;
 
         let params;
@@ -172,6 +172,7 @@ export class TelegramService {
         params = {
             message_value,
             message_type,
+            message_from: 'telegram',
             messenger_type: 'telegram',
             manager_id: '',
             contact_id,

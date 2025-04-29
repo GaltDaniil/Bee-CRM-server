@@ -82,35 +82,100 @@ export class MessagesService {
 
             const message = await this.messageRepository.create(dto);
 
-            console.log('сообщение создалось в createMessage', message);
-
             if (dto.attachments) {
-                console.log(dto.attachments);
-                await this.attachmentsService.sortAttachments(message.message_id as string, dto);
+                await this.attachmentsService.sortAndSaveAttachments(
+                    message.message_id as string,
+                    dto,
+                );
             }
 
             // УВЕДОМЛЕНИЕ ДЛЯ МЕНЕДЖЕРОВ
 
+            // Исключения
+            const excludedMessages = [
+                'Акция 1+1=3',
+                'Да, я фитнес-тренер',
+                'Начать обучение',
+                'Очень хочу им стать',
+                'Нет, хочу им стать',
+                'Хочу стать',
+                'Позвать менеджера',
+                'Назад',
+                'Информация о курсах',
+                'На главную',
+                'Здравствуйте! Пришлёте видео?',
+                'Здравствуйте! Меня заинтересовал данный товар.',
+                'Здравствуйте! Как оформить заказ?',
+                'Здравствуйте! Когда можно посмотреть?',
+            ];
+
             if (!dto.manager_id) {
                 this.chatsService.addUnreadCount(dto.chat_id);
-                // Лиля
-                tgBot.sendMessage(
-                    360641449,
-                    `Пришло новое сообщение в чат https://beechat.ru/apps/chat/${message.chat_id} c текстом "${message.message_value}"`,
-                    {
-                        /* parse_mode: 'MarkdownV2', */
-                        disable_web_page_preview: true,
-                    },
-                );
-                // Яна
-                tgBot.sendMessage(
-                    1037441383,
-                    `Пришло новое сообщение в чат https://beechat.ru/apps/chat/${message.chat_id} c текстом "${message.message_value}"`,
-                    {
-                        /* parse_mode: 'MarkdownV2', */
-                        disable_web_page_preview: true,
-                    },
-                );
+                //Исключения из уведомлений
+                if (
+                    dto.messenger_id === '181693928' ||
+                    dto.chat_id === '91e685ba76ec84e48c2b7a43' ||
+                    dto.chat_id === '9e6c6c99a89776272b573c36' ||
+                    dto.chat_id === '86e58d9d43f9d1d2eda17f7c'
+                ) {
+                } else if (excludedMessages.includes(dto.message_value)) {
+                } else if (dto.message_value === '') {
+                    // Лиля
+                    tgBot.sendMessage(
+                        360641449,
+                        `Пришло новое сообщение c файлом в чат https://beechat.ru/apps/chat/${message.chat_id}"`,
+                        {
+                            /* parse_mode: 'MarkdownV2', */
+                            disable_web_page_preview: true,
+                        },
+                    );
+                    // Яна
+                    tgBot.sendMessage(
+                        1037441383,
+                        `Пришло новое сообщение c файлом в чат https://beechat.ru/apps/chat/${message.chat_id}"`,
+                        {
+                            /* parse_mode: 'MarkdownV2', */
+                            disable_web_page_preview: true,
+                        },
+                    );
+                    // Даня
+                    tgBot.sendMessage(
+                        299602933,
+                        `Пришло новое сообщение c файлом в чат https://beechat.ru/apps/chat/${message.chat_id}"`,
+                        {
+                            /* parse_mode: 'MarkdownV2', */
+                            disable_web_page_preview: true,
+                        },
+                    );
+                } else {
+                    // Лиля
+                    tgBot.sendMessage(
+                        360641449,
+                        `Пришло новое сообщение в чат https://beechat.ru/apps/chat/${message.chat_id} c текстом "${message.message_value}"`,
+                        {
+                            /* parse_mode: 'MarkdownV2', */
+                            disable_web_page_preview: true,
+                        },
+                    );
+                    // Яна
+                    tgBot.sendMessage(
+                        1037441383,
+                        `Пришло новое сообщение в чат https://beechat.ru/apps/chat/${message.chat_id} c текстом "${message.message_value}"`,
+                        {
+                            /* parse_mode: 'MarkdownV2', */
+                            disable_web_page_preview: true,
+                        },
+                    );
+                    // Даня
+                    tgBot.sendMessage(
+                        299602933,
+                        `Пришло новое сообщение в чат https://beechat.ru/apps/chat/${message.chat_id} c текстом "${message.message_value}"`,
+                        {
+                            /* parse_mode: 'MarkdownV2', */
+                            disable_web_page_preview: true,
+                        },
+                    );
+                }
             } else {
                 this.chatsService.readAllMessages(dto.chat_id);
                 if (dto.message_from === 'main') {
@@ -146,24 +211,103 @@ export class MessagesService {
         messenger_id: string,
         messenger_type: string,
         message_value: string,
-        attachments?: MessengerAttachments,
+        attachments?,
     ) {
         try {
             if (messenger_type === 'telegram') {
-                tgBot.sendMessage(Number(messenger_id), message_value, { is_bot_message: true });
+                if (message_value.trim())
+                    await tgBot.sendMessage(Number(messenger_id), message_value, {
+                        is_bot_message: true,
+                    });
+                if (attachments) {
+                    for (const attachment of attachments) {
+                        try {
+                            const fileOptions = {
+                                filename: attachment.originalname,
+                                contentType: attachment.mimetype,
+                            };
+
+                            if (attachment.mimetype.startsWith('image')) {
+                                fileOptions.contentType = 'image/jpeg';
+                                await tgBot.sendPhoto(
+                                    Number(messenger_id),
+                                    attachment.buffer,
+                                    {},
+                                    fileOptions,
+                                );
+                            } else if (attachment.mimetype.startsWith('video')) {
+                                await tgBot.sendVideo(
+                                    Number(messenger_id),
+                                    attachment.buffer,
+                                    {},
+                                    fileOptions,
+                                );
+                            } else if (attachment.mimetype.startsWith('audio')) {
+                                await tgBot.sendAudio(
+                                    Number(messenger_id),
+                                    attachment.buffer,
+                                    {},
+                                    fileOptions,
+                                );
+                            } else {
+                                await tgBot.sendDocument(
+                                    Number(messenger_id),
+                                    attachment.buffer,
+                                    {},
+                                    fileOptions,
+                                );
+                            }
+                        } catch (error) {
+                            console.error('Error sending attachment to Telegram:', error);
+                        }
+                    }
+                }
             }
             if (messenger_type === 'vk') {
+                let uploadedAttachment;
+                let uploadedAttachments = [];
+                if (attachments.length > 0) {
+                    for (const attachment of attachments) {
+                        if (attachment.mimetype === 'image/jpeg') {
+                            uploadedAttachment = await vkBot.upload.messagePhoto({
+                                peer_id: Number(messenger_id),
+                                source: {
+                                    value: attachment.buffer,
+                                    filename: attachment.originalname,
+                                },
+                            });
+                            uploadedAttachment.toString;
+                        }
+                        uploadedAttachments.push(uploadedAttachment);
+                    }
+                    uploadedAttachments.join(',');
+                }
                 const randomId = Math.floor(Math.random() * 1000000);
                 vkBot.api.messages.send({
                     user_id: Number(messenger_id),
                     message: message_value,
                     random_id: randomId,
+                    attachment: uploadedAttachments,
                 });
             }
             if (messenger_type === 'instagram') {
             }
             if (messenger_type === 'wa') {
-                this.whatsappService.sendMessage(messenger_id, message_value);
+                let attachmentsData = [];
+                if (attachments && attachments.length > 0) {
+                    for (const attachment of attachments) {
+                        const params = {
+                            messenger_id,
+                            buffer: attachment.buffer,
+                            filename: attachment.originalname,
+                            mimeType: attachment.mimetype,
+                            size: attachment.size,
+                        };
+                        attachmentsData.push(params);
+                        console.log();
+                    }
+                }
+                this.whatsappService.sendMessage(messenger_id, message_value, attachmentsData);
             }
         } catch (error) {
             console.log(error);

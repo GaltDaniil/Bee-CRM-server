@@ -1,8 +1,9 @@
 // wa-server.ts - независимый процесс для работы с WhatsApp
-import { Client, LocalAuth } from 'whatsapp-web.js';
+import { Client, LocalAuth, MessageMedia } from 'whatsapp-web.js';
 import * as express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import { Attachment } from 'vk-io';
 
 const app = express();
 const server = createServer(app);
@@ -50,18 +51,60 @@ waBot.on('message_create', async (msg) => {
             return;
         }
 
-        io.emit('message_from_main', {
+        const messageData = {
             from: msg.from,
             to: msg.to,
             body: msg.body,
             id: msg.id._serialized,
-        });
+            hasMedia: msg.hasMedia,
+            attachments: null,
+        };
+
+        /* if (msg.hasMedia) {
+            try {
+                const media = await msg.downloadMedia();
+                console.log('media в message_create', media)
+                messageData.attachments = {
+                    mimeType: media.mimetype,
+                    data: media.data, // base64
+                    filename: msg.body || `file_${Date.now()}`,
+                };
+            } catch (error) {
+                console.error('Ошибка при загрузке медиа:', error);
+            }
+        } */
+
+        io.emit('message_from_main', messageData);
     } else {
-        io.emit('message', {
+        const messageData = {
             from: msg.from,
             body: msg.body,
             id: msg.id._serialized,
-        });
+            hasMedia: msg.hasMedia,
+            attachments: [],
+            //@ts-ignore
+            name: msg._data.notifyName ? msg._data.notifyName : '',
+        };
+
+        console.log('messageData', messageData);
+
+        if (msg.hasMedia) {
+            try {
+                const media = await msg.downloadMedia();
+
+                console.log('media', media);
+                messageData.attachments.push({
+                    mimetype: media.mimetype,
+                    buffer: media.data, // base64
+                    originalname: `file_${Date.now()}.jpg`,
+                    filesize: media.filesize,
+                });
+            } catch (error) {
+                console.error('Ошибка при загрузке медиа:', error);
+            }
+        }
+
+        io.emit('message', messageData);
     }
 });
 
@@ -70,15 +113,27 @@ io.on('connection', (socket) => {
     console.log('🔌 New WebSocket connection');
 
     socket.on('sendMessage', async (msg) => {
-        console.log('📤 Получено сообщение от основного сервера:', msg);
-
         try {
             await waBot.sendMessage(msg.messenger_id, msg.message_value);
-            console.log('✅ Сообщение отправлено:', msg.messenger_id, msg.message_value);
+            await new Promise((resolve) => setTimeout(resolve, 500)); // Задержка
+            if (msg.attachments.length > 0) {
+                for (const attachment of msg.attachments) {
+                    const { mimeType, buffer, filename } = attachment;
+                    const media = new MessageMedia(mimeType, buffer.toString('base64'), filename);
+                    const options = {
+                        caption: '',
+                        filename: filename,
+                        sendMediaAsDocument: !mimeType.startsWith('image'),
+                    };
+                    await waBot.sendMessage(msg.messenger_id, media, options);
+                    await new Promise((resolve) => setTimeout(resolve, 1000)); // Задержка
+                }
+            }
         } catch (error) {
             console.error('❌ Ошибка при отправке сообщения через waBot:', error);
         }
     });
+
     socket.on('checkPhoneNumber', async (phoneNumber, callback) => {
         try {
             const isRegistered = await waBot.isRegisteredUser(phoneNumber);

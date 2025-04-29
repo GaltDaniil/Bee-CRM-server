@@ -15,32 +15,48 @@ export class AttachmentsService {
         private attachmentsProvider: AttachmentsProvider,
     ) {}
 
-    async sortAttachments(message_id: string, dto: CreateMessageDto) {
+    async sortAndSaveAttachments(message_id: string, dto: CreateMessageDto) {
         const { attachments, messenger_type, message_from, messenger_id } = dto;
-        let attachmentsDataArray;
+        let attachmentsData;
+        let attachmentsDataArray: CreateAttachmentDto[] = [];
 
-        switch (messenger_type) {
+        switch (message_from) {
             case 'telegram':
+                //Приведение данных к стандартному типу
+
+                //приведение к type Attachment
                 attachmentsDataArray =
                     await this.attachmentsProvider.telegramAttachmentsParser(attachments);
                 break;
             case 'wa':
+                //Приведение данных к стандартному типу
+                attachmentsData = await this.attachmentsProvider.waParser(attachments);
+                //приведение к type Attachment
+                attachmentsDataArray =
+                    await this.attachmentsProvider.convertToDtoAttachment(attachmentsData);
                 break;
             case 'vk':
-                attachmentsDataArray = await this.attachmentsProvider.vkAttachmentsParser(
-                    attachments,
-                    message_from,
-                    messenger_id,
-                );
+                //Приведение данных к стандартному типу
+                attachmentsData = await this.attachmentsProvider.vkParser(attachments);
+                //приведение к type Attachment
+                attachmentsDataArray =
+                    await this.attachmentsProvider.convertToDtoAttachment(attachmentsData);
 
                 break;
             case 'crm':
-                return;
+                console.log('sortAndSaveAttachments. Получено сообщение из CRM');
+                //Приведение данных к стандартному типу
+                attachmentsData = await this.attachmentsProvider.crmParser(attachments);
+                //приведение к type Attachment
+                attachmentsDataArray =
+                    await this.attachmentsProvider.convertToDtoAttachment(attachmentsData);
+
+                break;
             default:
-                console.error(`Неизвестный тип мессенджера: ${messenger_type}`);
+                console.error(`Неизвестный тип мессенджера: ${message_from}`);
                 return [];
         }
-        console.log('attachmentsDataArray в sortAttachments', attachmentsDataArray);
+
         // Если массив пустой, возвращаем пустой результат
         if (!attachmentsDataArray || attachmentsDataArray.length === 0) {
             console.warn('Массив вложений пуст.');
@@ -56,7 +72,6 @@ export class AttachmentsService {
                     message_id,
                     ...attachmentData, // Передаем данные вложения
                 });
-                console.log('Созданный attachments', createdAttachment);
                 if (createdAttachment) {
                     createdAttachments.push(createdAttachment);
                 }

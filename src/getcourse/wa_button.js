@@ -1,4 +1,4 @@
-window.addEventListener('load', () => {
+window.addEventListener('DOMContentLoaded', () => {
     const targetNode = document.body;
     const config = { childList: true, subtree: true };
 
